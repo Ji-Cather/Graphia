@@ -212,6 +212,8 @@ def convert_jsonl_to_csv(root_dir, output_dir):
                 else:
                     print(f"Warning: 'id' column not found in {root}, using default index")
                 
+                cols_save = ["predict","src_idx"]
+                merged_df = merged_df[cols_save]
                 os.makedirs(os.path.dirname(csv_path), exist_ok=True)
                 # Write to JSONL (each row is a JSON object on a new line)
                 print(f"Merged {len(jsonl_files)} files into {csv_path}")
@@ -219,19 +221,19 @@ def convert_jsonl_to_csv(root_dir, output_dir):
 
 
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--output_dir', type=str, default="", help="files to be saved")
     parser.add_argument('--root_dir', type=str, default="", help="files to be converted")
     parser.add_argument('--phase', type=str, default="c2j", help="files to be converted") # c2j or j2c
     args = parser.parse_args()
 
-    if parser.phase == "c2j":
+    if args.phase == "c2j":
         output_dir = "/data/oss_bucket_0/jjr/LLMGGen/prompt_data"
         root_dir = "prompts"
         convert_csv_to_jsonl(output_dir,root_dir)
         
-    elif parser.phase == "j2c":
-        output_dir = "/home/jijiarui.jjr/ROLL/LLMGGen/results"
-        root_dir = "/data/oss_bucket_0/jjr/LLMGGen/results"
-        convert_jsonl_to_csv(root_dir,output_dir)
+    elif args.phase == "j2c":
+        
+        convert_jsonl_to_csv(args.root_dir,arg.output_dir)
     

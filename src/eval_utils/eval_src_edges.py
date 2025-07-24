@@ -15,7 +15,7 @@ import copy
 
 
 from .eval_graph_metric import eval_graph_metric
-
+from ..jl_metric import JLEvaluator
 def compute_metrics(pred_dsts, gt_dsts):
     """
     计算AUC和Precision指标
@@ -147,7 +147,7 @@ def evaluate_hubs(gt_edge_matrix, pred_edge_matrix, k=20):
 
 
 def jl_all_graph(reference_graph: TemporalData, generated_graph: TemporalData):
-    from jl_metric import JLEvaluator
+    
 
     # Initialize the evaluator
     evaluator = JLEvaluator(max_events=1e6)

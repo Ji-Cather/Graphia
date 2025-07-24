@@ -10,16 +10,16 @@ import json
 import torch
 import torch.nn as nn
 
-from models.TGAT import TGAT
-from models.MemoryModel import MemoryModel, compute_src_dst_node_time_shifts
-from models.CAWN import CAWN
-from models.TCL import TCL
-from models.GraphMixer import GraphMixer
-from models.DyGFormer import DyGFormer
-from models.modules import MergeLayer
-from models.modules import MLPClassifier, MLPClassifier_edge
-from utils.DataLoader import get_idx_data_loader, get_link_prediction_data, get_edge_classification_data
-from utils.utils import get_neighbor_sampler
+from .models.TGAT import TGAT
+from .models.MemoryModel import MemoryModel, compute_src_dst_node_time_shifts
+from .models.CAWN import CAWN
+from .models.TCL import TCL
+from .models.GraphMixer import GraphMixer
+from .models.DyGFormer import DyGFormer
+from .models.modules import MergeLayer
+from .models.modules import MLPClassifier, MLPClassifier_edge
+from .utils.DataLoader import get_idx_data_loader, get_link_prediction_data, get_edge_classification_data
+from .utils.utils import get_neighbor_sampler
 
 def load_checkpoint(model: nn.Module, 
                     model_name: str,

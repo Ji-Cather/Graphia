@@ -3,12 +3,12 @@ import os
 import glob
 import argparse
 
-def concat_model_results_to_baseline(data_name, split):
+def concat_model_results_to_baseline(data_name, split, phase="inference"):
     """
     将各模型的*_matrix.csv结果合并到baseline的matrix.csv中，model列为模型名/匹配方式
     """
     # baseline路径
-    baseline_dir = os.path.join("reports", "baselines", data_name, split, "inference")
+    baseline_dir = os.path.join("reports", "baselines", data_name, split, phase)
     baseline_pattern = os.path.join(baseline_dir, "*_matrix.csv")
     baseline_files = glob.glob(baseline_pattern)
     if not baseline_files:
@@ -27,7 +27,7 @@ def concat_model_results_to_baseline(data_name, split):
     all_dfs = [baseline_df]
 
     for model in model_dirs:
-        model_matrix_dir = os.path.join(reports_dir, model, data_name, split, "inference")
+        model_matrix_dir = os.path.join(reports_dir, model, data_name, split, phase)
         if not os.path.exists(model_matrix_dir):
             continue
         matrix_files = glob.glob(os.path.join(model_matrix_dir, "*_matrix.csv"))
@@ -59,7 +59,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_name', type=str, required=True, help='数据集名称')
     parser.add_argument('--split', type=str, required=True, help='数据集分割')
+    parser.add_argument('--phase', type=str, default="inference", help='数据集分割')
     # 允许传递任意额外参数
     args, unknown = parser.parse_known_args()
    
-    concat_model_results_to_baseline(args.data_name, args.split)
+    concat_model_results_to_baseline(args.data_name, args.split, args.phase)
