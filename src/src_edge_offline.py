@@ -403,7 +403,11 @@ def process_single_prediction(
         environment_data, False, None, interaction_cache
     )
     output_edge_ids = np.array(data.output_edges_dict[src_id])
-    gt_dst_node_ids = torch.tensor(data.get_dst_ids(output_edge_ids))
+    if not isinstance(data.get_dst_ids(output_edge_ids), torch.Tensor):
+        gt_dst_node_ids = torch.tensor(data.get_dst_ids(output_edge_ids))
+    else:
+        gt_dst_node_ids = data.get_dst_ids(output_edge_ids)
+        
     query_examples.append({
                 "prompt": QUERY_SYS_PROMPT + "\n" + agent_parser.format_instruction + "\n" + query_agent_text,
                 # "identifier": f"{src_id}_{pred_idx}",
@@ -960,7 +964,9 @@ def main():
 
     combined_df.to_csv(os.path.join(prompt_dir, 'combined_examples.csv'), index=False)
     sub_df.to_csv(os.path.join(prompt_dir, 'combined_easy_examples.csv'), index=False)
-
+    if args.split == "test":
+        query_all_examples.to_csv(os.path.join(prompt_dir, 'query_examples.csv'), index=False)
+        edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
     print(f"Query examples prompt mean length: {query_all_examples['prompt'].str.len().mean():.2f}")
     print(f"Query examples prompt max length: {query_all_examples['prompt'].str.len().max()}")
     

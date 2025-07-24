@@ -2,6 +2,7 @@
 
 python -m llmggen.train_node_regression_v2 \
   --data_name 8days_dytag_small_text_en \
+  --data_root ${data_root} \
   --model_name InformerDecoder \
   --num_runs 1 \
   --gpu 1 \
@@ -14,4 +15,4 @@ python -m llmggen.train_node_regression_v2 \
   --bwr 1980 \
   --use_feature bert \
   --cm_order \
-  --rescale
+  --rescale >> log_dp.txt 2>&1 &

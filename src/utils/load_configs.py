@@ -56,7 +56,7 @@ def get_link_prediction_args(is_evaluation: bool = False):
     parser.add_argument('--load_best_configs', action='store_true', default=True, help='whether to load the best configurations')
 
     parser.add_argument('--save_root', type=str, default="./", help='save root dir')
-    parser.add_argument('--data_root', type=str, default="./", help='data root dir')
+    parser.add_argument('--data_root', type=str, default="./data", help='data root dir')
     try:
         args = parser.parse_args()
         args.device = f'cuda:{args.gpu}' if torch.cuda.is_available() and args.gpu >= 0 else 'cpu'
@@ -223,6 +223,10 @@ def get_node_regression_args(is_evaluation: bool = False):
     parser.add_argument("--quantile_mapping", action="store_true", help="Whether to postprocess the prediction with quantile mapping")
 
     parser.add_argument("--rescale", action="store_true", help="Whether to rescale the outdegrees by the maximum edge number")
+
+
+    parser.add_argument('--save_root', type=str, default="./", help='save root dir')
+    parser.add_argument('--data_root', type=str, default="./data", help='data root dir')
     try:
         args = parser.parse_args()
         args.device = f'cuda:{args.gpu}' if torch.cuda.is_available() and args.gpu >= 0 else 'cpu'

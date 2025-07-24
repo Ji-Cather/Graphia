@@ -457,13 +457,13 @@ def get_ctdg_generation_data(args):
     
     """
     bwr_ctdg = BWRCTDGALLDataset(
-        pred_ratio= args.pred_ratio,
-        bwr=args.bwr,
-        use_feature=args.use_feature,
-        time_window=args.time_window,
-        root=f'data/{args.data_name}',
-        cm_order = args.cm_order
-    )
+            pred_ratio= args.pred_ratio,
+            bwr=args.bwr,
+            use_feature=args.use_feature,
+            time_window=args.time_window,
+            root= os.path.join(args.data_root, args.data_name),
+            cm_order = args.cm_order
+        )
     return bwr_ctdg.train_data, bwr_ctdg.val_data, bwr_ctdg.test_data
         
 def get_link_prediction_data(args):
