@@ -625,9 +625,9 @@ def main_infer_edge(query_result_path):
         raise ValueError(f"Invalid split: {args.split}")
 
     query_examples_all_result = pd.read_csv(query_result_path)
-    prompt_dir = f'prompts/{args.data_name}/{args.split}/inference'
-    result_dir = f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference'
-    report_path = f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv'
+    prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
+    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
+    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv')
 
     os.makedirs(prompt_dir, exist_ok=True)
     os.makedirs(result_dir, exist_ok=True)
@@ -710,9 +710,9 @@ def main_infer_dst(dx_src_path: str = None):
     sim_mean = sim.mean()
     sim_std = sim.std()
     
-    prompt_dir = f'prompts/{args.data_name}/{args.split}/inference'
-    result_dir = f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference'
-    report_path = f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv'
+    prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
+    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
+    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv')
 
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     if os.path.exists(report_path):
@@ -825,9 +825,9 @@ def main():
     else:
         raise ValueError(f"Invalid split: {args.split}")
 
-    prompt_dir = f'prompts/{args.data_name}/{args.split}/teacher_forcing'
-    result_dir = f'results/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing'
-    report_path = f'reports/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing/report.csv'
+    prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/teacher_forcing')
+    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing')
+    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing/report.csv')
 
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     if os.path.exists(report_path):
@@ -962,11 +962,14 @@ def main():
 
     sub_df = pd.concat([query_sub, edge_sub], ignore_index=True)
 
+    # for multi domain rl
     combined_df.to_csv(os.path.join(prompt_dir, 'combined_examples.csv'), index=False)
     sub_df.to_csv(os.path.join(prompt_dir, 'combined_easy_examples.csv'), index=False)
-    if args.split == "test":
-        query_all_examples.to_csv(os.path.join(prompt_dir, 'query_examples.csv'), index=False)
-        edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
+    
+    # for single-domain rl
+    query_all_examples.to_csv(os.path.join(prompt_dir, 'query_examples.csv'), index=False)
+    edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
+    
     print(f"Query examples prompt mean length: {query_all_examples['prompt'].str.len().mean():.2f}")
     print(f"Query examples prompt max length: {query_all_examples['prompt'].str.len().max()}")
     
@@ -995,8 +998,8 @@ def main_inference_offline_cold_start():
     else:
         raise ValueError(f"Invalid split for cold start: {args.split}")
     
-    prompt_dir = f'prompts/{args.data_name}/{args.split}/cold_start'
-    result_dir = f'results/{args.model_config_name}/{args.data_name}/{args.split}/cold_start'
+    prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/cold_start')
+    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/cold_start')
 
     os.makedirs(prompt_dir, exist_ok=True)
     os.makedirs(result_dir, exist_ok=True)
@@ -1619,7 +1622,7 @@ if __name__ == "__main__":
                         'a large time_scaling_factor tends to sample more on recent links, 0.0 corresponds to uniform sampling, '
                         'it works when sample_neighbor_strategy == time_interval_aware')
     parser.add_argument('--seed', type=int, default=42, help="随机种子")
-    
+    parser.add_argument('--save_root',type=str, default=".", help="save_root")
     args = parser.parse_args()
 
     # # 运行异步主函数
