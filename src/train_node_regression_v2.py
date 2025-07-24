@@ -19,7 +19,6 @@ from .models.informer.model import Informer, InformerTranverse, InformerDecoder
 from .utils.utils import set_random_seed, convert_to_gpu, get_parameter_sizes, create_optimizer
 from .utils.utils import get_neighbor_sampler, NegativeEdgeSampler
 from .evaluate_models_utils import evaluate_model_node_regression_v2
-# from .utils.DataLoader import get_idx_data_loader, get_node_classification_data
 from .utils.DataLoader import get_ctdg_generation_data
 from .utils.bwr_ctdg import BWRCTDGDataset, custom_collate
 from .utils.EarlyStopping import EarlyStopping
