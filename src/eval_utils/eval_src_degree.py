@@ -10,7 +10,8 @@ from torch import nn
 from argparse import ArgumentParser
 import os
 from torch_geometric.data import TemporalData
-from eval_utils.get_baseline_graph import get_baseline_graphs
+
+from .get_baseline_graph import get_baseline_graphs
 
 
 

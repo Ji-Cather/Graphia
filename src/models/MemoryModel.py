@@ -1,9 +1,9 @@
-import torch
+from utils.utils import torch
 import numpy as np
 import torch.nn as nn
 from collections import defaultdict
 
-from utils.utils import NeighborSampler
+from ..utils.utils import NeighborSampler
 from .modules import TimeEncoder, MergeLayer, MultiHeadAttention
 
 

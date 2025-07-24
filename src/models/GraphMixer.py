@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .modules import TimeEncoder
-from utils.utils import NeighborSampler
+from ..utils.utils import NeighborSampler
 
 
 class GraphMixer(nn.Module):

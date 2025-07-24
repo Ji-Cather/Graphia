@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn import MultiheadAttention
 
 from .modules import TimeEncoder
-from utils.utils import NeighborSampler
+from ..utils.utils import NeighborSampler
 
 
 class DyGFormer(nn.Module):

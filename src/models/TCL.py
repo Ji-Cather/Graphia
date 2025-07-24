@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from .modules import TimeEncoder, TransformerEncoder
-from utils.utils import NeighborSampler
+from ..utils.utils import NeighborSampler
 
 
 class TCL(nn.Module):
