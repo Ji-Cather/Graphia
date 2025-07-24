@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from . import get_gt_data
-from ..utils.bwr_ctdg import BWRCTDGALLDataset, BWRCTDGDataset
+from utils.bwr_ctdg import BWRCTDGALLDataset, BWRCTDGDataset
 
 def get_snapshot_graph(path, time_window:int = None, cut_edge_number:int = None):
     if (time_window is None and cut_edge_number is None) or (time_window is not None and cut_edge_number is not None):
@@ -63,6 +63,10 @@ def get_baseline_graphs(args):
             "/data/jiarui_ji/tigger/models/8days_dytag_small/results/generated_edges.csv"
         ],
         "8days_dytag_small_text":[
+            "/data/jiarui_ji/DGGen/results/synthetic_data/8days_dytag_small_textfno.csv",
+            "/data/jiarui_ji/tigger/models/8days_dytag_small_text/results/generated_edges.csv"
+        ],
+         "8days_dytag_small_text_en":[
             "/data/jiarui_ji/DGGen/results/synthetic_data/8days_dytag_small_textfno.csv",
             "/data/jiarui_ji/tigger/models/8days_dytag_small_text/results/generated_edges.csv"
         ]

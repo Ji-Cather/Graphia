@@ -665,8 +665,8 @@ class BWRCTDGDataset:
     def load_degree_predictor_results(self,
                                       degree_result_path:str):
         degree_result = torch.load(degree_result_path)
-        self.pred_src_dx = degree_result['degree']
-        self.pred_src_unique_dx = degree_result['unique_degree']
+        self.pred_src_dx = degree_result['degree'].int().numpy()
+        # self.pred_src_unique_dx = degree_result['unique_degree'].int()
     
     
     
@@ -1034,8 +1034,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_feature', type=str, default='bert',
                         choices=['bert', 'no'],
                         help='是否使用特征')
-    parser.add_argument('--cm_order', action='store_true',
-                        help='是否使用CM排序')
+    parser.add_argument('--cm_order', type=bool, default=True, help='是否使用cm_order')
     parser.add_argument('--force_reload', action='store_true',
                         help='是否强制重新加载数据')
     

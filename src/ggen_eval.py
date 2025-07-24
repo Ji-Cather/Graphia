@@ -8,7 +8,8 @@ from torch_geometric.data import TemporalData
 from .utils.bwr_ctdg import (BWRCTDGALLDataset, 
                             BWRCTDGDataset, 
                             Dataset_Template)
-from .eval_utils import evaluate_all_sources, get_ctdg_edges, get_gt_data
+from .eval_utils import get_gt_data
+from .eval_utils.eval_src_edges import evaluate_all_sources, get_ctdg_edges
 
 
 def eval_graph(
@@ -120,6 +121,7 @@ def main(args):
     print(f"评估指标: {eval_matrixs}")
     eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
     report_df = pd.DataFrame([eval_matrixs])
+    os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
     report_df.to_csv(args.graph_report_path)
 
 if __name__ == "__main__":

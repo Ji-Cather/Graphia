@@ -255,7 +255,7 @@ if __name__ == "__main__":
     parser.add_argument('--time_window', type=int, default=24*60*60, help='时间窗口大小')
     parser.add_argument('--pred_ratio', type=float, default=0.15, help='预测比例')
     parser.add_argument('--split', type=str, default='test', help='数据集分割')
-    parser.add_argument('--cm_order', type=bool, default=False, help='是否使用cm_order')
+    parser.add_argument('--cm_order', type=bool, default=True, help='是否使用cm_order')
     parser.add_argument('--cut_off_baseline', type=str, default="edge", help='cut_off_baseline')
     parser.add_argument('--node_msg', type=bool, default=False, help='是否使用节点消息')
     parser.add_argument('--edge_msg', type=bool, default=False, help='是否使用边消息')

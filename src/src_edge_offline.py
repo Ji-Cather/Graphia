@@ -1171,7 +1171,7 @@ def process_query_result(
                  recall_inductive: bool = False,
                  ):
     
-    
+
     query_examples_all_result = pd.read_csv(args.query_save_path)
     assert gen_col in query_examples_all_result.columns and "src_idx" in query_examples_all_result.columns, f"gen_col {gen_col} not in query_examples_all_result"
     bwr_ctdg = BWRCTDGALLDataset(
@@ -1202,8 +1202,8 @@ def process_query_result(
     else:
         raise ValueError(f"Invalid split: {args.split}")
     
-    if args.dx_src_path is not None:
-        data_ctdg.load_degree_predictor_results(dx_src_path = args.dx_src_path)
+    if not teacher_forcing:
+        data_ctdg.load_degree_predictor_results(args.dx_src_path)
 
     
     bert_embedder = BertEmbedder()
@@ -1258,20 +1258,19 @@ def process_query_result(
         query_examples_all_result[col] = [result["parsed"].get(col, None) if result["success"] else None for result in parsed_results]
     
     
-    if args.reward_sel is not None:
-        rewarder = DstReward(args)
+    rewarder = DstReward(args)
     query_edges_src_all = []
     
     cols_text = Dataset_Template[environment_data['data_name']]['node_text_cols']
     grouped_df = query_examples_all_result.groupby('src_idx')
-    for src_idx, group in tqdm(grouped_df, "processing query examples"):
-        src_idx = int(float(src_idx))
+    for src_id, group in tqdm(grouped_df, "processing query examples"):
+        src_id = int(float(src_id))
         candidate_dst_ids_all = []
         
         for _, row in group.iterrows():
             
-            dx_src_list = identifier_map[src_idx]["dx_src_list"]
-            dst_node_ids = identifier_map[src_idx]["dst_node_ids"]
+            dx_src_list = identifier_map[src_id]["dx_src_list"]
+            dst_node_ids = identifier_map[src_id]["dst_node_ids"]
             if row["success"]:
                 query_text = Dataset_Template[environment_data['data_name']]['node_text_template'].format_map(row[cols_text].to_dict())
                 filter_rule = row.get("filter_rule")
@@ -1296,7 +1295,7 @@ def process_query_result(
             times = []
             for pred_idx in identifier_map[row["src_idx"]]["pred_ids"]:
                 t = data_ctdg.unique_times[data_ctdg.input_len + int(pred_idx)]
-                times.extend([t] * dx_src_list[pred_idx])
+                times.extend([t] * int(dx_src_list[pred_idx]))
                 
             query_edges = pd.DataFrame(columns=["src", "dst", "t"])
             for dst_id, t in zip(candidate_dst_ids["dst_ids"], times):
@@ -1614,6 +1613,7 @@ if __name__ == "__main__":
     # gnn reward args
     parser.add_argument('--gnn_model_name', type=str, default=None, help="GNN模型名称")
     parser.add_argument('--gnn_save_model_path', type=str, default=None, help="GNN模型保存路径")
+    parser.add_argument('--gen_col', type=str, default="predict", help="llm generated column name")
     parser.add_argument('--sample_neighbor_strategy', type=str, default='recent', choices=['uniform', 'recent', 'time_interval_aware'], help='how to sample historical neighbors')
     parser.add_argument('--time_scaling_factor', default=1e-6, type=float, help='the hyperparameter that controls the sampling preference with time interval, '
                         'a large time_scaling_factor tends to sample more on recent links, 0.0 corresponds to uniform sampling, '
@@ -1633,18 +1633,21 @@ if __name__ == "__main__":
         main_infer_dst(dx_src_path = args.dx_src_path) # O(N)
 
     if args.process_query_result:
-        # process_query_result(args = args,
-        #                      teacher_forcing=False,
-        #                      gen_col = "generate_results",
-        #                      recall_common_neighbor = True,
-        #                      recall_inductive = False,
-        #                      )
-        process_query_result(args = args,
-                             teacher_forcing=True,
-                             gen_col = "generate_results",
+        if "teacher_forcing" in args.query_save_path:
+            process_query_result(args = args,
+                                 teacher_forcing=True,
+                                 gen_col = args.gen_col,
+                                 recall_common_neighbor = True,
+                                 recall_inductive = False,
+                                 )
+        else:
+            process_query_result(args = args,
+                             teacher_forcing=False,
+                             gen_col = args.gen_col,
                              recall_common_neighbor = True,
                              recall_inductive = False,
                              )
+       
         
     if args.infer_edge:
         assert args.query_result_path is not None, "must pass degree prediction data for infer"

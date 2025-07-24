@@ -3,10 +3,9 @@ import numpy as np
 import torch
 from torch_geometric.data import TemporalData
 
-from ..utils.bwr_ctdg import BWRCTDGALLDataset, BWRCTDGDataset
 
 
-def get_gt_data(data:BWRCTDGDataset,
+def get_gt_data(data,
                 node_msg: bool = False,
                 edge_msg: bool = False,
                 output_edge_ids: np.array = None,
