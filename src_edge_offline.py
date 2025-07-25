@@ -18,7 +18,7 @@ from .utils.utils_parser import RegexTaggedContentParser, ModelResponse
    
 from .utils.utils import get_neighbor_sampler
 from .utils.DataLoader import get_link_prediction_data
-from .load_gnn_judger import create_link_prediction_model,compute_src_dsts_score
+from .load_gnn_judger import create_link_prediction_model,compute_src_dsts_score, create_edge_classification_model
 class BertEmbedder:
     def __init__(self, model_name = "prajjwal1/bert-tiny"):
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -47,6 +47,44 @@ You should think about the edge attribute.
 You should first predict the edge LABEL. Then generate the edge TEXT, consistent with src node history edges.
 """
 
+ACTOR_JUDGE = """
+/no_think 
+You are an expert judge evaluating the quality of a response to a given prompt. Please evaluate the role-playing ability of the ACTOR NODE based on its actor actions consistency with reference actions.
+
+[Prompt]:
+{prompt}
+
+[ACTOR Action]:
+{response}
+
+[Reference Action]:
+{reference}
+
+Scoring Logic  
+- Contextual Fidelity(CF):  
+1 (Frequent inconsistencies),3 (Minor inconsistencies),5 (Deep contextual mastery)  
+- Personality Depth(PD):
+1 (Contradictory traits),3 (Occasional deviations),5 (Nuanced embodiment)  
+- Dynamic Adaptability(DA):  
+1 (Rigid responses),3 (Context-dependent adaptation),5 (Creative innovation)  
+- Immersive Quality(IQ):  
+1 (Disruptive inconsistencies),3 (Minor immersion breaks),5 (Seamless portrayal)  
+- Content Richness(CR):  
+1 (Superficial/output),3 (Adequate detail),5 (Rich, layered interactions)  
+
+
+Your resposne must follow the format provided below. Please note that only when the content quality is extremely good can 5 Points be given.
+
+[Response Format]:
+CF: [1-5]  
+PD: [1-5]  
+DA: [1-5]  
+IQ: [1-5]  
+CR: [1-5]  
+
+
+[Response]:
+"""
 
 def select_to_last_period(s, upper_token = 4e3):
     upper_token = int(upper_token)
@@ -426,8 +464,8 @@ def process_single_prediction(
 
 def process_single_edge_attr_prediction(
     src_id: int,
-    dst_ids: List[int], # pred or gt,
-    edge_ids: List[int], # edge id for (src_id, dst_id, t)
+    dst_ids: List[int], # dst 
+    edge_ids: List[int], # edge id
     environment_data: Dict,
     data: BWRCTDGDataset,
     args: Any,
@@ -437,7 +475,7 @@ def process_single_edge_attr_prediction(
 ) -> Dict:
     edge_examples = []
     
-    for dst_id, edge_id in zip(dst_ids, edge_ids):
+    for dst_id, edge_id, t in zip(dst_ids, edge_ids, ts):
         dst_id = dst_id.item()
         edge_id = edge_id.item()
         agent_text, agent_parser = predict_edge(
@@ -460,7 +498,7 @@ def process_single_edge_attr_prediction(
         elif type == "gt":
             gt_edge_text = np.array(data.edge_text[edge_id])
             gt_label = int(data.ctdg.label[edge_id].item())
-
+            gt_t = data.ctdg.t[edge_id].item()
             edge_examples.append({
                         "prompt": EDGE_ATTR_PROMPT+ "\n" + agent_parser.format_instruction + "\n" + agent_text,
                         "instruction": EDGE_ATTR_PROMPT+ "\n" + agent_parser.format_instruction,
@@ -471,6 +509,7 @@ def process_single_edge_attr_prediction(
                         "output": gt_edge_text,
                         "gt_label": gt_label,
                         "edge_id": edge_id,
+                        "t": gt_t
             })
     
  
@@ -564,16 +603,16 @@ def get_gen_data(src_dsts) -> TemporalData:
             # 为每个目标节点创建边
             for dst_id, t, msg in zip(dst_ids, ts, msg):
                 edge = {
-                    "src": src,
-                    "dst": dst_id,
+                    "src_idx": src,
+                    "dst_idx": dst_id,
                     "t": t,
                     "msg": msg
                 }
                 edges.append(edge)
     
     # 将边数据转换为张量
-    src = torch.tensor([edge["src"] for edge in edges], dtype=torch.int64)
-    dst = torch.tensor([edge["dst"] for edge in edges], dtype=torch.int64)
+    src = torch.tensor([edge["src_idx"] for edge in edges], dtype=torch.int64)
+    dst = torch.tensor([edge["dst_idx"] for edge in edges], dtype=torch.int64)
     t = torch.tensor([edge["t"] for edge in edges], dtype=torch.int64)
     msg = torch.stack([edge["msg"] for edge in edges],dim=0).to(torch.float32)
     # 创建并返回时序数据对象
@@ -646,8 +685,8 @@ def main_infer_edge(query_result_path):
                                                     non_zero_indices[2]):
             src_id = batch_data['src_node_ids'][batch_inter_idx][bwr_idx]
             input_edge_ids = batch_data['input_edge_ids'][batch_inter_idx][bwr_idx]
-            dst_ids = query_examples_all_result[query_examples_all_result["identifier"] == f"{src_id}_{pred_idx}"]['llm_dst_ids']
-            output_edge_ids = query_examples_all_result[query_examples_all_result["identifier"] == f"{src_id}_{pred_idx}"]['llm_edge_ids']
+            dst_ids = query_examples_all_result[query_examples_all_result["src_idx"] == src_id]['dst'].tolist()
+            output_edge_ids = query_examples_all_result[query_examples_all_result["src_idx"] == src_id]['edge_id'].tolist()
             edge_text_examples = process_single_edge_attr_prediction(
                 src_id,
                 dst_ids,
@@ -1164,6 +1203,57 @@ class DstReward:
             self.model_name,
             self.gnn_judger,
             model_type=self.model_type)    
+        
+class EdgeReward:
+    def __init__(self,
+                 args):
+        
+        self.reward_sel = args.reward_sel
+        if args.reward_sel is None: return
+        
+        if args.reward_sel == "gnn":
+            node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_num = get_link_prediction_data(args)
+                
+            full_neighbor_sampler = get_neighbor_sampler(
+                    data=full_data, 
+                    sample_neighbor_strategy=args.sample_neighbor_strategy,
+                    time_scaling_factor=args.time_scaling_factor, 
+                    seed=args.seed)
+            
+            self.model_name = args.gnn_model_name
+            self.model_type = "ec"
+            self.gnn_judger = create_edge_classification_model(
+                model_name=args.gnn_model_name,
+                save_model_path=args.gnn_save_model_path,
+                node_raw_features=node_raw_features,
+                edge_raw_features=edge_raw_features,
+                data=full_data,
+                neighbor_sampler=full_neighbor_sampler
+            )
+        
+    def reward(self,
+                src_ids:np.ndarray,
+                dst_ids:np.ndarray,
+                interact_times:np.ndarray,
+                pred_edge_id: int):
+        if self.reward_sel is None: return 0
+        
+        if self.reward_sel == "gnn":
+            return self.gnn_reward_src_query_data(src_ids, dst_ids, interact_times)[0,pred_edge_id].item()
+        
+    
+    def gnn_reward_src_query_data(self,
+                                  src_ids:np.ndarray,
+                                  dst_ids:np.ndarray,
+                                  interact_times:np.ndarray):
+        
+        return compute_src_dsts_score(
+            src_ids,
+            dst_ids,
+            interact_times,
+            self.model_name,
+            self.gnn_judger,
+            model_type=self.model_type)    
     
     
 def process_query_result(
@@ -1300,16 +1390,16 @@ def process_query_result(
                 t = data_ctdg.unique_times[data_ctdg.input_len + int(pred_idx)]
                 times.extend([t] * int(dx_src_list[pred_idx]))
                 
-            query_edges = pd.DataFrame(columns=["src", "dst", "t"])
+            query_edges = pd.DataFrame(columns=["src_idx", "dst_idx", "t"])
             for dst_id, t in zip(candidate_dst_ids["dst_ids"], times):
                 query_edges.loc[len(query_edges)] = {
-                    "src": src_id,
-                    "dst": dst_id,
+                    "src_idx": src_id,
+                    "dst_idx": dst_id,
                     "t": int(t)
                 }
             
-            score = rewarder.reward(query_edges["src"].values,
-                                    query_edges["dst"].values,
+            score = rewarder.reward(query_edges["src_idx"].values,
+                                    query_edges["dst_idx"].values,
                                     query_edges["t"].values)
             
             candidate_dst_ids_all.append((query_edges,score))
@@ -1317,10 +1407,254 @@ def process_query_result(
         candidate_dst_ids_all.sort(key=lambda x: x[1], reverse=True)
         query_edges_src_all.append(candidate_dst_ids_all[0][0])
         
-    query_edges_src_all = pd.concat(query_edges_src_all, ignore_index=True) # 含有src,dst,t三列
+    query_edges_src_all = pd.concat(query_edges_src_all, ignore_index=True) # 含有src,dst,t, edge_id 四列
+    # 直接使用 np.arange 设置 edge_id 列
+    query_edges_src_all["edge_id"] = np.arange(len(query_edges_src_all))
     query_edges_src_all.to_csv(args.query_result_path, index=False)
  
         
+def execute_search_edge_label_toolkit(
+                           edge_label_text: str,
+                           src_id: int,
+                           bert_embedder: BertEmbedder, 
+                           environment_info: dict,
+                           environment_data:BWRCTDGDataset,
+                           interaction_cache:dict = {},
+                           recall_common_neighbor:bool = True,
+                           recall_alpha:int = 5):
+    try:
+        
+        edge_label_embedding = bert_embedder.get_embedding(edge_label_text)
+     
+            
+        label_features = torch.tensor(environment_data.label_feature)
+        similarities = torch.nn.functional.cosine_similarity(edge_label_embedding, label_features)
+        top_k = min(recall_alpha, len(label_features))
+        edge_label_ids = torch.arange(len(label_features))
+       # Identify exact matches where similarity is 1
+        exact_match_indices = torch.where((1.0-similarities)<1e-5)[0]
+        select_label = None
+        if len(exact_match_indices) > 0:
+            # Prioritize exact matches
+            select_label = exact_match_indices.tolist()[0]
+        candidate_edge_label_ids = edge_label_ids[torch.topk(similarities, k=top_k).indices].tolist()
+                
+
+        if isinstance(candidate_edge_label_ids, int):
+            candidate_edge_label_ids = [candidate_edge_label_ids]
+
+        if recall_common_neighbor and len(exact_match_indices) == 0:
+            n_edge_ids = environment_data.src_edge_infos([src_id])[0]
+            n_edge_ids = torch.vstack(n_edge_ids).flatten()
+            if n_edge_ids.shape[0] > 0:
+                n_label_ids = environment_data.ctdg.label[n_edge_ids]
+                n_similarities = torch.nn.functional.cosine_similarity(edge_label_embedding, 
+                label_features[n_label_ids])
+                n_top_k = min(top_k, len(n_similarities))
+                candidate_edge_label_r_n_ids = torch.topk(n_similarities, k=n_top_k).indices
+                candidate_edge_label_n_ids = n_label_ids[candidate_edge_label_r_n_ids.tolist()].tolist()
+                if len(candidate_edge_label_n_ids) > 0 and select_label is None:
+                    select_label = candidate_edge_label_n_ids[0]
+                # 保持相对顺序去重，先合并，再去重
+                merged_ids = list(candidate_edge_label_n_ids) + list(candidate_edge_label_ids)
+                seen = set()
+                candidate_edge_label_ids = [x for x in merged_ids if not (x in seen or seen.add(x))]
+                
+        if isinstance(candidate_edge_label_ids, Iterable) and len(candidate_edge_label_ids) > top_k:
+            candidate_edge_label_ids = candidate_edge_label_ids[:top_k]
+        
+        if not isinstance(candidate_edge_label_ids, (list, np.ndarray, torch.Tensor)):
+            candidate_edge_label_ids = [candidate_edge_label_ids] 
+        
+        if select_label is None:
+            select_label = candidate_edge_label_ids[0]
+        assert select_label is not None, "error selecting label"
+       
+        
+        unique_labels, counts = torch.unique(torch.tensor(candidate_edge_label_ids), return_counts=True)
+        top_freq_idx = torch.argmax(counts)
+        top1_f_edge_label = unique_labels[top_freq_idx].item()
+
+        return {
+            "label": select_label,
+            "top1_f_label": top1_f_edge_label,
+            "recalled_labels": candidate_edge_label_ids,
+        }
+        
+    except Exception as e:
+        
+        print("error in execute_search_edge_label_toolkit", e)
+        return {}
+        
+        
+def eval_edge_text(
+        edge_examples_all_result:pd.DataFrame,
+    ):
+    eval_prompts = []
+    for idx, row in edge_examples_all_result.iterrows():
+        eval_prompt = ACTOR_JUDGE.format(
+            prompt=row["edge_text"],
+            response=row["edge_text"],
+            reference=row["gt_text"]
+        )
+        eval_prompts.append({
+            "prompt": eval_prompt,
+            "edge_id": row["edge_id"],
+        })
+    eval_prompts = pd.DataFrame(eval_prompts)
+    return eval_prompts
+        
+        
+def process_edge_result(args,
+                        teacher_forcing=True,
+                        gen_col = "predict"
+                        ):
+    edge_examples_all_result = pd.read_csv(args.edge_save_path)
+    assert gen_col in edge_examples_all_result.columns and "src_idx" in edge_examples_all_result.columns, f"gen_col {gen_col} not in edge_examples_all_result"
+    bwr_ctdg = BWRCTDGALLDataset(
+        pred_ratio=args.pred_ratio,
+        bwr=args.bwr,
+        time_window=args.time_window,
+        root=os.path.join(args.data_root,args.data_name),
+        use_feature=args.use_feature,
+        cm_order=args.cm_order,
+    )
+    
+    environment_data = {
+            'dst_min': bwr_ctdg.dst_min,
+            'dst_max': bwr_ctdg.dst_max,
+            'bwr': bwr_ctdg.bwr,
+            'data_name': bwr_ctdg.data_name,
+            "description":Dataset_Template[bwr_ctdg.data_name]['description']
+        }
+    
+    # 假设not teacher forcing，这边要加入degree predictor结果的load    
+    if args.split == 'train':
+        data_ctdg = bwr_ctdg.train_data
+    elif args.split == 'val':
+        data_ctdg = bwr_ctdg.val_data
+    elif args.split == 'test':
+        data_ctdg = bwr_ctdg.test_data
+    else:
+        raise ValueError(f"Invalid split: {args.split}")
+    
+    bert_embedder = BertEmbedder()
+    edge_parser = RegexTaggedContentParser(
+        required_keys=Dataset_Template[environment_data['data_name']]['edge_text_cols'],
+    )
+    
+    
+    parsed_results = []
+    for idx, row in edge_examples_all_result.iterrows():
+        try:
+            parsed_results.append({
+                "parsed": edge_parser.parse(ModelResponse(row[gen_col])).parsed,
+                "success": True
+            } )
+        except:
+            parsed_results.append({
+                "parsed": None,
+                "success": False
+            })
+            
+    fail_count = sum(1 for result in parsed_results if not result["success"])
+    print(f"解析失败的数量: {fail_count}")
+
+    edge_examples_all_result["success"] = [result["success"] for result in parsed_results]
+    for col in Dataset_Template[environment_data['data_name']]['edge_text_cols']:
+        edge_examples_all_result[col] = [result["parsed"].get(col, None) if result["success"] else None for result in parsed_results]
+    
+    
+    rewarder = EdgeReward(args)
+    edges_all = []
+    
+    grouped_df = edge_examples_all_result.groupby('edge_id')
+    
+    # debug
+    if "t" not in edge_examples_all_result.columns:
+        edge_examples_all_result["t"] = np.repeat(
+            data_ctdg.unique_times[-1], 
+            edge_examples_all_result.shape[0]
+        )
+    
+    if "ts_str" in edge_examples_all_result.columns and not teacher_forcing:
+        # 尝试将ts_str列转回t（时间戳），如果失败则保留原t数值
+        def safe_str_to_timestamp(row):
+            try:
+                return int(datetime.strptime(row["ts_str"], "%Y-%m-%d %H:%M:%S").timestamp())
+            except Exception:
+                return row["t"]
+        edge_examples_all_result["t"] = edge_examples_all_result.apply(safe_str_to_timestamp, axis=1)
+        
+    if teacher_forcing:
+        # append_cols = ["gt_label", "gt_text"]
+        edge_examples_all_result["gt_label"] = edge_examples_all_result["gt_label"].map(lambda x: [int(x)])
+        edge_examples_all_result.rename(columns={"output": "gt_text"}, inplace=True)
+    else:
+        for idx, row in edge_examples_all_result.iterrows():
+            src_idx = int(float(row["src_idx"]))
+            src_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.src==src_idx]
+            src_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.src==src_idx]
+            dst_idx = int(float(row["dst_idx"]))
+            dst_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.dst==dst_idx]
+            dst_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.dst==dst_idx]
+            future_edge_idxs = [*src_future_edge_idxs, *dst_future_edge_idxs]
+            if len(future_edge_idxs) > 3:
+                future_edge_idxs = future_edge_idxs[:3]
+            future_edge_labels = [*src_future_labels, *dst_future_labels]
+            if len(future_edge_labels) > 3:
+                future_edge_labels = future_edge_labels[:3]
+            gt_edge_text_ref = "\n".join([f"{data_ctdg.ctdg.edge_text[edge_idx]}" for edge_idx in future_edge_idxs])
+            gt_edge_lable_ref = future_edge_labels
+            edge_examples_all_result.loc[idx, "gt_label"] = gt_edge_lable_ref
+            edge_examples_all_result.loc[idx, "gt_text"] = gt_edge_text_ref
+        
+        
+    for edge_id, group in tqdm(grouped_df, "processing edge examples"):
+        edge_id = int(float(edge_id))
+        candidate_edge_labels_all = []
+        
+        for _, row in group.iterrows():
+            
+            if row["success"]:
+                label_text = row["label"]
+            else:
+                label_text = ""
+                
+            candidate_edge_labels = execute_search_edge_label_toolkit(label_text,
+                                                                row["src_idx"],
+                                                                bert_embedder,
+                                                                environment_data,
+                                                                data_ctdg,
+                                                                data_ctdg.interaction_cache,
+                                                                recall_common_neighbor=True,
+                                                                recall_alpha=5
+                                                            )
+            
+            row["edge_label"] = candidate_edge_labels["label"]
+            row["edge_text"] = Dataset_Template[environment_data['data_name']]['edge_text_template'].format_map(row.to_dict())
+            row = row[["src_idx", "dst_idx", "t", "edge_id", "edge_label", "edge_text", "gt_label", "gt_text"]]
+
+           
+            score = rewarder.reward(np.array([row["src_idx"]]),
+                                    np.array([row["dst_idx"]]),
+                                    np.array([row["t"]]),
+                                    int(row["edge_id"]))
+            
+            candidate_edge_labels_all.append((pd.DataFrame([row]),score))
+        # 按照score对candidate_dst_ids_all进行排序，由高到低
+        candidate_edge_labels_all.sort(key=lambda x: x[1], reverse=True)
+        edges_all.append(candidate_edge_labels_all[0][0])
+    
+    
+    edges_all = pd.concat(edges_all,ignore_index=True) # 含有src,dst,t,edge_id,edge_label,edge_text
+    eval_prompts = eval_edge_text(edges_all)
+    prompt_dir = os.path.dirname(args.edge_save_path)
+    eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
+    edges_all.to_csv(args.edge_result_path, index=False)
+    
+    print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
+    print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
     
 def get_query_gen_data(query_df:pd.DataFrame,
                        data_ctdg: BWRCTDGDataset,
@@ -1348,8 +1682,8 @@ def get_query_gen_data(query_df:pd.DataFrame,
             if idx>=dx_src: break
             if not edge_msg and not node_msg:
                 edge = {
-                "src": src_id,
-                "dst": int(dst_id),
+                "src_idx": src_id,
+                "dst_idx": int(dst_id),
                 "t": int(t)
                 }
                 edges.append(edge)
@@ -1363,16 +1697,16 @@ def get_query_gen_data(query_df:pd.DataFrame,
                 msg = None
                 
             edge = {
-                "src": src_id,
-                "dst": dst_id,
+                "src_idx": src_id,
+                "dst_idx": dst_id,
                 "t": t,
                 "msg": msg
             }
             edges.append(edge)
     
     # 将边数据转换为张量
-    src = torch.tensor([edge["src"] for edge in edges], dtype=torch.int64)
-    dst = torch.tensor([edge["dst"] for edge in edges], dtype=torch.int64)
+    src = torch.tensor([edge["src_idx"] for edge in edges], dtype=torch.int64)
+    dst = torch.tensor([edge["dst_idx"] for edge in edges], dtype=torch.int64)
     t = torch.tensor([edge["t"] for edge in edges], dtype=torch.int64)
     if "msg" in edges[0].keys() and edges[0]["msg"] != None:
         msg = torch.stack([edge["msg"] for edge in edges], dim=0).to(torch.float32)
@@ -1426,8 +1760,8 @@ def get_reward_gen_data(reward_df:pd.DataFrame,
             if idx>=dx_src: break
             if not edge_msg and not node_msg:
                 edge = {
-                "src": src_id,
-                "dst": int(dst_id),
+                "src_idx": src_id,
+                "dst_idx": int(dst_id),
                 "t": int(t)
                 }
                 edges.append(edge)
@@ -1441,16 +1775,16 @@ def get_reward_gen_data(reward_df:pd.DataFrame,
                 msg = None
                 
             edge = {
-                "src": src_id,
-                "dst": dst_id,
+                "src_idx": src_id,
+                "dst_idx": dst_id,
                 "t": t,
                 "msg": msg
             }
             edges.append(edge)
     
     # 将边数据转换为张量
-    src = torch.tensor([edge["src"] for edge in edges], dtype=torch.int64)
-    dst = torch.tensor([edge["dst"] for edge in edges], dtype=torch.int64)
+    src = torch.tensor([edge["src_idx"] for edge in edges], dtype=torch.int64)
+    dst = torch.tensor([edge["dst_idx"] for edge in edges], dtype=torch.int64)
     t = torch.tensor([edge["t"] for edge in edges], dtype=torch.int64)
     if "msg" in edges[0].keys() and edges[0]["msg"] != None:
         msg = torch.stack([edge["msg"] for edge in edges], dim=0).to(torch.float32)
@@ -1610,6 +1944,12 @@ if __name__ == "__main__":
     parser.add_argument('--query_save_path', type=str, default=None, help='llm generated query result for dst node selection')
     parser.add_argument('--query_result_path', type=str, default=None, help='processed query result for dst node selection')
     
+    
+    # process edge result    
+    parser.add_argument('--process_edge_result', action="store_true", help='process edge result for llm generated data') # dst result
+    parser.add_argument('--edge_save_path', type=str, default=None, help='llm generated edge result for edge selection')
+    parser.add_argument('--edge_result_path', type=str, default=None, help='processed edge result for edge selection')
+    
     # reward selection args
     parser.add_argument('--reward_sel', type=str, default=None, help="奖励选择方式，默认无")
 
@@ -1649,6 +1989,17 @@ if __name__ == "__main__":
                              gen_col = args.gen_col,
                              recall_common_neighbor = True,
                              recall_inductive = False,
+                             )
+    if args.process_edge_result:
+        if "teacher_forcing" in args.edge_save_path:
+            process_edge_result(args = args,
+                                 teacher_forcing=True,
+                                 gen_col = args.gen_col
+                                 )
+        else:
+            process_edge_result(args = args,
+                             teacher_forcing=False,
+                             gen_col = args.gen_col
                              )
        
         
