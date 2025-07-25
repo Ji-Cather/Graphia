@@ -187,37 +187,42 @@ def convert_jsonl_to_csv(root_dir, output_dir):
     for root, dirs, files in os.walk(root_dir):
         # 判断是否是叶子文件夹（没有子文件夹）
         if not dirs:
-            # 查找当前目录下所有匹配的 jsonl 文件
-            jsonl_files = glob.glob(os.path.join(root, "query_examples.jsonl_*"))
-            if len(jsonl_files)==0: continue
-            jsonl_path = os.path.join(root, jsonl_files[0])
-            csv_path = os.path.splitext(jsonl_path)[0].replace(root_dir,output_dir) + ".csv"
-            
-            if jsonl_files:
-                print(f"Processing folder: {root}")
+            for pattern,cols_save in zip(["query_examples.jsonl_*", "edge_text_examples.jsonl_*"],
+                                            [["predict","src_idx"],
+                                              ["predict","src_idx","dst_idx"]]):
+                print(pattern)
+                # 查找当前目录下所有匹配的 jsonl 文件
+                jsonl_files = glob.glob(os.path.join(root, pattern))
+                if len(jsonl_files)==0: continue
+                jsonl_path = os.path.join(root, jsonl_files[0])
+                csv_path = os.path.splitext(jsonl_path)[0].replace(root_dir,output_dir) + ".csv"
                 
-                # 读取所有 jsonl 文件到 DataFrame
-                df_list = []
-                for file in jsonl_files:
-                    df = pd.read_json(file, lines=True)
-                    df_list.append(df)
-                
-                # 合并所有文件
-                merged_df = pd.concat(df_list, ignore_index=True)
-                
-                # 检查是否存在 'id' 列
-                if 'id' in merged_df.columns:
-                    # 设置 id 列为索引
-                    merged_df.set_index('id', inplace=True)
-                else:
-                    print(f"Warning: 'id' column not found in {root}, using default index")
-                
-                cols_save = ["predict","src_idx"]
-                merged_df = merged_df[cols_save]
-                os.makedirs(os.path.dirname(csv_path), exist_ok=True)
-                # Write to JSONL (each row is a JSON object on a new line)
-                print(f"Merged {len(jsonl_files)} files into {csv_path}")
-                merged_df.to_csv(csv_path, index=True)
+                if jsonl_files:
+                    print(f"Processing folder: {root}")
+                    
+                    # 读取所有 jsonl 文件到 DataFrame
+                    df_list = []
+                    for file in jsonl_files:
+                        df = pd.read_json(file, lines=True)
+                        df_list.append(df)
+                    
+                    # 合并所有文件
+                    merged_df = pd.concat(df_list, ignore_index=True)
+                    
+                    # 检查是否存在 'id' 列
+                    if 'id' in merged_df.columns:
+                        # 设置 id 列为索引
+                        merged_df.set_index('id', inplace=True)
+                    else:
+                        print(f"Warning: 'id' column not found in {root}, using default index")
+                    
+                    if "output" in merged_df.columns:
+                        cols_save.append("output")
+                    merged_df = merged_df[cols_save]
+                    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+                    # Write to JSONL (each row is a JSON object on a new line)
+                    print(f"Merged {len(jsonl_files)} files into {csv_path}")
+                    merged_df.to_csv(csv_path, index=True)
 
 
 if __name__ == "__main__":
@@ -235,5 +240,5 @@ if __name__ == "__main__":
         
     elif args.phase == "j2c":
         
-        convert_jsonl_to_csv(args.root_dir,arg.output_dir)
+        convert_jsonl_to_csv(args.root_dir,args.output_dir)
     

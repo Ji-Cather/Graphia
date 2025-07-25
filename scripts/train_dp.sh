@@ -1,6 +1,6 @@
 
 
-python -m llmggen.train_node_regression_v2 \
+python -m LLMGGen.train_node_regression_v2 \
   --data_name 8days_dytag_small_text_en \
   --data_root ${data_root} \
   --model_name InformerDecoder \

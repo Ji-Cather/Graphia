@@ -1,4 +1,4 @@
-from utils.utils import torch
+import torch
 import numpy as np
 import torch.nn as nn
 from collections import defaultdict
