@@ -1,0 +1,100 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "debug ggen",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "LLMGGen.src_edge_offline",
+            "env": {
+                "PYTHONPATH": "../${workspaceFolder}"
+            },
+            // "program": "src_edge_offline.py",
+            "args": [
+               "--data_root", "./LLMGGen/data",
+               "--data_name", "8days_dytag_small_text_en",
+               "--time_window", "86400",
+               "--bwr", "1980",
+               "--use_feature", "bert",
+               "--pred_ratio", "0.15",
+               "--split", "test",
+               "--cm_order", "True",
+
+
+            //    "--dx_src_path", "saved_results_deg/InformerDecoder_seed0_bwr1980_qmTrue_ufbert_cmTrue/8days_dytag_small_text_en/test_degree.pt",
+               "--query_save_path", "LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/query_examples.csv",
+               "--query_result_path", "LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/query_ggen.csv",
+               "--process_query_result"
+
+            // "--edge_save_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/teacher_forcing/edge_text_prompt.csv",
+            // "--edge_result_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/teacher_forcing/edge_ggen.csv",
+            // "--edge_save_path", "LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/edge_text_prompt.csv",
+            // "--edge_result_path", "LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/edge_ggen.csv",
+            // "--process_edge_result"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "debug eval edge",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "LLMGGen.ggen_eval",
+            "args": [
+               "--data_root", "./LLMGGen/data",
+               "--data_name", "8days_dytag_small_text_en",
+               "--time_window", "86400",
+               "--bwr", "1980",
+               "--use_feature", "bert",
+               "--pred_ratio", "0.15",
+               "--split", "test",
+               "--cm_order", "True",
+            //    "--graph_result_path", "LLMGGen/results/qwen3/8days_dytag_small_text_en/test/teacher_forcing/edge_ggen_2.csv",
+            //    "--edge_report_path", "LLMGGen/reports/qwen3/8days_dytag_small_text_en/test/teacher_forcing/edge_matrix_2.csv"
+            
+            
+            // "--graph_result_path", "LLMGGen/results/qwen3/8days_dytag_small_text_en/test/teacher_forcing/query_ggen.csv",
+            // "--graph_report_path", "LLMGGen/reports/qwen3/8days_dytag_small_text_en/test/teacher_forcing/query_matrix.csv"
+
+            //  "--graph_result_path", "LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/query_ggen.csv",
+            // "--graph_report_path", "LLMGGen/reports/qwen3_sft/8days_dytag_small_text_en/test/teacher_forcing/query_matrix.csv"
+            
+            // "--graph_result_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst/8days_dytag_small_text_en/test/teacher_forcing/query_ggen_8.csv",
+            // "--graph_report_path", "LLMGGen/reports/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst/8days_dytag_small_text_en/test/teacher_forcing/query_matrix_8_agg.csv"
+            
+            // "--graph_result_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst/8days_dytag_small_text_en/test/teacher_forcing/query_ggen.csv",
+            // "--graph_report_path", "LLMGGen/reports/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst/8days_dytag_small_text_en/test/teacher_forcing/query_matrix.csv"
+            
+            "--edge_result_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/teacher_forcing/edge_ggen.csv",
+            "--edge_report_path", "LLMGGen/reports/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/teacher_forcing/edge_matrix.csv",
+            "--edge_text_result_path", "LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/teacher_forcing/edge_text_eval_prompt.csv"
+
+            // "--graph_result_path", "LLMGGen/results/qwen3/8days_dytag_small_text_en/test/teacher_forcing/query_ggen.csv",
+            // "--graph_report_path", "LLMGGen/reports/qwen3/8days_dytag_small_text_en/test/teacher_forcing/query_matrix_2.csv"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "debug concat_query_ggen",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "LLMGGen.concat_query_ggen",
+            "args": [
+               "--data_name", "8days_dytag_small_text_en",
+               "--split", "test",
+             
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
