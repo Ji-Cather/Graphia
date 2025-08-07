@@ -9,19 +9,34 @@ from .utils.bwr_ctdg import (BWRCTDGALLDataset,
                             BWRCTDGDataset, 
                             Dataset_Template)
 from .eval_utils import get_gt_data
-from .eval_utils.eval_src_edges import evaluate_all_sources, get_ctdg_edges
+from .eval_utils.eval_src_edges import (get_ctdg_edges,
+                                        evaluate_edges,
+                                        evaluate_graphs,
+                                        evaluate_nodes)
 
 
 def eval_graph_structure(
                 max_node_number,    
                 gt_graph:TemporalData,
-                gen_graph:TemporalData):
+                gen_graph:TemporalData,
+                node_texts:np.ndarray=None):
     gen_matrix = get_ctdg_edges(gen_graph, max_node_number)
     gt_matrix = get_ctdg_edges(gt_graph, max_node_number)
-    eval_matrixs = evaluate_all_sources(gt_matrix,
+    
+    node_matrixs = evaluate_nodes(gt_matrix,
+                                    gen_matrix,
+                                    node_texts = node_texts)
+    
+    graph_matrixs = evaluate_graphs(gt_matrix,
                                         gen_matrix,
                                         gt_graph,
                                         gen_graph)
+   
+    eval_matrixs = {
+        **node_matrixs,
+        **graph_matrixs
+    }
+
     return eval_matrixs
    
     
@@ -75,67 +90,9 @@ def get_gen_data(df: pd.DataFrame,
         return TemporalData(src=src, dst=dst, t=t, msg=msg)
     
     
-def extract_score_v3(llm_output: str):
-        # 修正正则表达式：允许方括号完全缺失
-        pattern = r"(CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
-        
-        matches = re.findall(pattern, llm_output, re.IGNORECASE)
-        
-        # 初始化默认值（全部设为1）
-        scores = {'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
-        
-        # 更新匹配到的键值
-        for key, value in matches:
-            scores[key.upper()] = int(value)  # 转换为大写并存储为整数
-        
-        # 计算平均分
-        total = sum(scores.values())
-        average = total / (5*len(scores)) # 0-1
-        scores.update({"average": average})
-        return scores
 
+ 
 
-
-def eval_graph_text(
-                gen_graph_df:pd.DataFrame,
-                gen_eval_result_df:pd.DataFrame=None): # save text_eval_prompt.df
-    edge_matrix = pd.DataFrame()
-    
-    
-    if gen_eval_result_df is not None:
-        assert gen_graph_df.shape[0] == gen_eval_result_df.shape[0], "gen_graph_df and gen_eval_result_df must have the same number of rows"
-        # 对每一行提取score字典，并将每个key作为单独的列
-        scores = []
-        for idx, row in gen_eval_result_df.iterrows():
-            score_dict = extract_score_v3(row["predict"])
-            scores.append(score_dict)
-        scores_df = pd.DataFrame(scores)
-    else:
-        scores_df = pd.DataFrame()
-   
-    
-    # 计算label_acc
-    def calc_label_acc(row):
-        try:
-            gt_label = eval(row["gt_label"]) if isinstance(row["gt_label"], str) else row["gt_label"]
-        except:
-            gt_label = row["gt_label"]
-        if not isinstance(gt_label, (list, tuple)):
-            gt_label = [gt_label]
-        return int(row["edge_label"] in gt_label)
-    
-    if "edge_label" in gen_graph_df.columns and "gt_label" in gen_graph_df.columns:
-        gen_graph_df["label_acc"] = gen_graph_df.apply(calc_label_acc, axis=1)
-        # debug
-        print(f"标签准确率(label_acc): {gen_graph_df['label_acc'].mean():.4f}")
-    
-    edge_matrix = {
-        **{k: np.mean(gen_eval_result_df[k]) for k in scores_df.columns},
-        "label_acc": np.mean(gen_graph_df["label_acc"])
-    }
-    
-    
-    return edge_matrix
 
     
 def main(args):
@@ -167,36 +124,43 @@ def main(args):
     else:
         raise ValueError(f"Invalid split: {args.split}")
     
-    df = pd.read_csv(args.graph_result_path)
-    if args.edge_text_result_path is not None:
-        edge_text_df = pd.read_csv(args.edge_text_result_path)
-        edge_matrix = eval_graph_text(df, edge_text_df)
-    else:
-        edge_matrix = eval_graph_text(df, None)
+    
         
-    report_edge_df = pd.DataFrame([edge_matrix])
-    report_edge_df.to_csv(args.edge_report_path)
+    if args.edge_report_path is not None:
+        edge_df = pd.read_csv(args.edge_result_path)
+        if args.edge_text_result_path is not None:
+            edge_text_df = pd.read_csv(args.edge_text_result_path)
+            edge_matrix = evaluate_edges(edge_df, edge_text_df)
+        else:
+            edge_matrix = evaluate_edges(edge_df, None)
+        report_edge_df = pd.DataFrame([edge_matrix])
+        os.makedirs(os.path.dirname(args.edge_report_path), exist_ok=True)
+        report_edge_df.to_csv(args.edge_report_path)
     
-    gt_graph = get_gt_data(data_ctdg, 
-                           node_msg=args.node_msg,
-                           edge_msg=args.edge_msg)
-    gen_graph = get_gen_data(df,
-                             data_ctdg,
-                             node_msg=args.node_msg,
-                             edge_msg=args.edge_msg)
-    
-    eval_matrixs = eval_graph_structure(data_ctdg.node_text.shape[0]-1,
-                              gt_graph,
-                              gen_graph)
-    
-    
-    
-    print(f"评估指标: {eval_matrixs}")
-    eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
-    report_df = pd.DataFrame([eval_matrixs])
-    os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
-    report_df.to_csv(args.graph_report_path)
-    
+    if args.graph_result_path is not None:
+        df = pd.read_csv(args.graph_result_path)
+        gt_graph = get_gt_data(data_ctdg, 
+                            node_msg=args.node_msg,
+                            edge_msg=args.edge_msg)
+        gen_graph = get_gen_data(df,
+                                data_ctdg,
+                                node_msg=args.node_msg,
+                                edge_msg=args.edge_msg)
+        
+        eval_matrixs = eval_graph_structure(data_ctdg.node_text.shape[0]-1,
+                                gt_graph,
+                                gen_graph,
+                                node_texts=data_ctdg.node_text)
+        
+        
+        
+        print(f"评估指标: {eval_matrixs}")
+        eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
+        report_df = pd.DataFrame([eval_matrixs])
+        if args.graph_report_path is not None:
+            os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
+            report_df.to_csv(args.graph_report_path)
+   
     
     
 
@@ -227,10 +191,11 @@ if __name__ == "__main__":
     parser.add_argument('--edge_msg', action="store_true", help='是否使用边消息 in graph embedding metric')
     
     # gen graph args
-    parser.add_argument('--graph_result_path', type=str, default=None, help='graph result path')
+    parser.add_argument('--graph_result_path', type=str, default=None, help='ggen result path(query ggen)')
     parser.add_argument('--graph_report_path', type=str, default=None, help='graph result report path')
     
     # edge text eval args
+    parser.add_argument('--edge_result_path', type=str, default=None, help='ggen result path(edge ggen)')
     parser.add_argument('--edge_text_result_path', type=str, default=None, help='edge text eval result path')
     parser.add_argument('--edge_report_path', type=str, default=None, help='edge text eval result report path')
     

@@ -11,7 +11,7 @@ import powerlaw
 import time
 import argparse
 
-from numba import jit
+
 directory = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(directory)
 sys.path.append(parent)
@@ -338,7 +338,7 @@ def update_dict(dict_,key,val):
 
 
 
-def eval_graph_metric(gt_adj: np.ndarray, pred_adj: np.ndarray):
+def evaluate_graph_metric(gt_adj: np.ndarray, pred_adj: np.ndarray):
     gt_graph_statistics = compute_graph_statistics(gt_adj)
     pred_graph_statistics = compute_graph_statistics(pred_adj)
     # mmd_results = {}

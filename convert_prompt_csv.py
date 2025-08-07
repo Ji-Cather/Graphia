@@ -187,9 +187,14 @@ def convert_jsonl_to_csv(root_dir, output_dir):
     for root, dirs, files in os.walk(root_dir):
         # 判断是否是叶子文件夹（没有子文件夹）
         if not dirs:
-            for pattern,cols_save in zip(["query_examples.jsonl_*", "edge_text_examples.jsonl_*"],
+            for pattern, cols_save in zip(["query_examples.jsonl_*", 
+                                            "query_examples_8.jsonl_*", 
+                                            "edge_text_prompt.jsonl_*",
+                                            "edge_text_eval_prompt.jsonl_*"],
                                             [["predict","src_idx"],
-                                              ["predict","src_idx","dst_idx"]]):
+                                             ["predict","src_idx"],
+                                              ["predict","src_idx","dst_idx","edge_id","prompt"],
+                                              ["predict","edge_id"]]):
                 print(pattern)
                 # 查找当前目录下所有匹配的 jsonl 文件
                 jsonl_files = glob.glob(os.path.join(root, pattern))
@@ -199,12 +204,14 @@ def convert_jsonl_to_csv(root_dir, output_dir):
                 
                 if jsonl_files:
                     print(f"Processing folder: {root}")
-                    
-                    # 读取所有 jsonl 文件到 DataFrame
-                    df_list = []
-                    for file in jsonl_files:
-                        df = pd.read_json(file, lines=True)
-                        df_list.append(df)
+                    try:
+                        # 读取所有 jsonl 文件到 DataFrame
+                        df_list = []
+                        for file in jsonl_files:
+                            df = pd.read_json(file, lines=True)
+                            df_list.append(df)
+                    except:
+                        continue
                     
                     # 合并所有文件
                     merged_df = pd.concat(df_list, ignore_index=True)
@@ -216,9 +223,13 @@ def convert_jsonl_to_csv(root_dir, output_dir):
                     else:
                         print(f"Warning: 'id' column not found in {root}, using default index")
                     
-                    if "output" in merged_df.columns:
-                        cols_save.append("output")
-                    merged_df = merged_df[cols_save]
+                    for col in ["gt_label","output"]:
+                        if col in merged_df.columns:
+                            cols_save.append(col)
+                    try:
+                        merged_df = merged_df[cols_save]
+                    except:
+                        print(jsonl_path)
                     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
                     # Write to JSONL (each row is a JSON object on a new line)
                     print(f"Merged {len(jsonl_files)} files into {csv_path}")
@@ -234,11 +245,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.phase == "c2j":
-        output_dir = "/data/oss_bucket_0/jjr/LLMGGen/prompt_data"
-        root_dir = "prompts"
-        convert_csv_to_jsonl(output_dir,root_dir)
+        convert_csv_to_jsonl(args.output_dir,args.root_dir)
         
     elif args.phase == "j2c":
-        
         convert_jsonl_to_csv(args.root_dir,args.output_dir)
     

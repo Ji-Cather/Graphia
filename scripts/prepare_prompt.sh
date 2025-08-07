@@ -10,8 +10,12 @@ save_root="/home/jijiarui.jjr/ROLL/LLMGGen"
 
 python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --rl --sft --save_root ${save_root}
 python -m LLMGGen.src_edge_offline  --data_name $data_name --split val  --data_root ${data_root}  --rl --save_root ${save_root}
-python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
+python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --rl --save_root ${save_root}
+# python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
 
 
 # echo "python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --rl "
 
+python  -m LLMGGen.convert_prompt_csv --phase "c2j" \
+        --output_dir "/data/oss_bucket_0/jjr/LLMGGen/prompt_data" \
+        --root_dir "/home/jijiarui.jjr/ROLL/LLMGGen/prompts"
