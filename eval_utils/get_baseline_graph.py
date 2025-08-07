@@ -78,7 +78,8 @@ def get_baseline_graphs(args):
     if args.cut_off_baseline == "edge":
         for baseline_name, baseline_path in zip([ "dggen","tigger"], data_baseline_map[args.data_name]):
             baseline_data = get_snapshot_graph(baseline_path, 
-                                               time_window=None, cut_edge_number=test_data.src.shape[0])      
+                                               time_window=None, 
+                                               cut_edge_number=test_data.src.shape[0])      
             if not args.edge_msg and not args.node_msg:
                 baseline_graphs[baseline_name] = [baseline_data]
             else:
@@ -96,7 +97,14 @@ def get_baseline_graphs(args):
             
     elif args.cut_off_baseline == "time_window":
         for baseline_name, baseline_path in zip([ "dggen","tigger"], data_baseline_map[args.data_name]):
-            baseline_data = get_snapshot_graph(baseline_path, time_window=test_data.pred_len, cut_edge_number=None)
+            if baseline_name in ["dggen"]:
+                time_window = data_ctdg.pred_len*data_ctdg.time_window
+            elif baseline_name in ["tigger"]:
+                time_window = data_ctdg.pred_len
+                
+            baseline_data = get_snapshot_graph(baseline_path, 
+                                               time_window=time_window, 
+                                               cut_edge_number=None)
             if not args.edge_msg and not args.node_msg:
                 baseline_graphs[baseline_name] = [baseline_data]
             else:
@@ -119,4 +127,4 @@ def get_baseline_graphs(args):
     max_node_number = data_ctdg.node_text.shape[0]-1
     
     
-    return [test_data], baseline_graphs["tigger"], baseline_graphs["dggen"], max_node_number, data_ctdg.node_feature
+    return [test_data], baseline_graphs["tigger"], baseline_graphs["dggen"], max_node_number, data_ctdg.node_text, data_ctdg.node_feature

@@ -125,17 +125,8 @@ def create_node_representations(
     time_min = events.t.min()
     time_max = events.t.max()
     normalized_times = (events.t - time_min) / (time_max - time_min + 1e-6)
-
-    def normalize_features(features_dict):
-        normalized_features = {}
-        for node, features in features_dict.items():
-            msg_min = features.min(dim=0, keepdim=True)[0]
-            msg_max = features.max(dim=0, keepdim=True)[0]
-            normalized_features[node] = (features - msg_min) / (msg_max - msg_min + 1e-6)
-        return normalized_features
-
-    node_features = normalize_features(node_features)
-
+    # node_features 是 numpy 数组，直接归一化（不循环，一行实现）
+    node_features = (node_features - node_features.min()) / (node_features.max() - node_features.min() + 1e-6)
 
 
     for i in range(events.src.size(0)):
@@ -144,17 +135,13 @@ def create_node_representations(
         time_enc = normalized_times[i].reshape(1)
 
         try:
-            src_node_msg = node_features[src]
+            src_node_msg = torch.tensor(node_features[src])
         except Exception as e:
-            print(e)
-            print("random src node msg")
             src_node_msg = torch.randn(768)
         
         try:
-            dst_node_msg = node_features[dst]
+            dst_node_msg = torch.tensor(node_features[dst])
         except Exception as e:
-            print(e)
-            print("random dst node msg")
             dst_node_msg = torch.randn(768)
 
         combined_src = torch.cat([dst_node_msg, msg, time_enc, torch.tensor([0])], dim=0)
@@ -174,16 +161,18 @@ def create_node_representations(
     for node in node_reps.keys():
         event_reps = torch.cat(node_reps[node]) 
         try:
-            feat_rep = node_features[node]
+            feat_rep = torch.tensor(node_features[node])
         except Exception as e:
-            print(e)
-            print("random node msg")
             feat_rep = torch.randn(768)
         combined = torch.cat([event_reps, feat_rep]) 
         
 
         total_dim = len(combined)
         output_dim = embd.shape[1] 
+
+        # 保证 combined 和 embd 的 dtype 一致，避免 double != float 的错误
+        if combined.dtype != embd.dtype:
+            combined = combined.to(embd.dtype)
 
         if total_dim > embd.shape[0]:
             # print('total_dim > embd.shape[0]',total_dim,embd.shape[0])

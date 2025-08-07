@@ -191,15 +191,29 @@ def jl_all_graph(reference_graph: TemporalData,
     return result_dict
 
 
-def graph_embedding_all_graph(gt_graph, 
-                              pred_graph,
+def graph_embedding_all_graph(reference_graph, 
+                              generated_graph,
                               node_feature:np.ndarray=None):
     
     evaluator = GraphEmbeddingEvaluator(max_events=1e6)
+    reference_graph = copy.deepcopy(reference_graph)
+    generated_graph = copy.deepcopy(generated_graph)
+    if 'msg' not in reference_graph.keys() and 'msg' not in generated_graph.keys():
+        reference_graph.msg = torch.zeros((reference_graph.src.shape[0], 1), dtype=torch.double)
+        generated_graph.msg = torch.zeros((generated_graph.src.shape[0], 1), dtype=torch.double)
+    
+    reference_graph = TemporalData(src=reference_graph.src.clone().detach(), 
+                                   dst=reference_graph.dst.clone().detach(), 
+                                   t=reference_graph.t.clone().detach(),
+                                   msg=reference_graph.msg.clone().detach())
+    generated_graph = TemporalData(src=generated_graph.src.clone().detach(), 
+                                   dst=generated_graph.dst.clone().detach(), 
+                                   t=generated_graph.t.clone().detach(),
+                                   msg=generated_graph.msg.clone().detach())
     input_dict = {
-        'reference': gt_graph,
+        'reference': reference_graph,
         'reference_node': node_feature,
-        'generated': pred_graph,
+        'generated': generated_graph,
         'generated_node': node_feature
     }
     result_dict = evaluator.eval(input_dict)
@@ -275,82 +289,6 @@ def evaluate_nodes(gt_edge_matrix,
 
 
     
-
-
-def evaluate_graphs(gt_edge_matrix, pred_edge_matrix, 
-                    gt_graph, pred_graph):
-
-    
-    
-    graph_metrics = {}
-    jl_result = jl_all_graph(gt_graph, pred_graph)
-    abs_result = evaluate_graph_metric(gt_edge_matrix, pred_edge_matrix)
-    
-    pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
-                               k=int(0.2 * gt_edge_matrix.shape[0]))
-
-    graph_metrics.update({f"{k}_hub": v for k, v in pred_result.items()})
-
-    edge_overlap = np.sum((gt_edge_matrix > 0) & (pred_edge_matrix > 0)) / np.sum(gt_edge_matrix > 0)
-    graph_metrics['edge_overlap'] = edge_overlap
-    graph_metrics.update(jl_result)
-    graph_metrics.update(abs_result)
-
-    return graph_metrics
-
-
-def evaluate_nodes(gt_edge_matrix, 
-                   pred_edge_matrix,
-                    test_src_indices:np.ndarray=None,
-                    node_texts:np.ndarray=None):
-    
-    src_results = []
-    if test_src_indices is None:
-        test_src_indices = np.where(gt_edge_matrix.sum(axis=1) > 0)[0]
-    if node_texts is not None:
-        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
-    
-    # 优化文本评估，批量处理所有节点的文本，减少bert_score和ROUGE的调用次数
-    if node_texts is not None:
-        # 先批量收集所有节点的预测和参考文本
-        all_preds = []
-        all_refs = []
-        node_indices = []
-        for i in test_src_indices:
-            preds = node_texts[pred_edge_matrix[i, :] > 0].astype(str).tolist()
-            refs = node_texts[gt_edge_matrix[i, :] > 0].astype(str).tolist()
-            all_preds.append("\n".join(preds))
-            all_refs.append("\n".join(refs))
-            node_indices.append(i)
-        # 批量计算ROUGE_L
-        rouge_scores = [calc_rouge_l(scorer, pred, ref) for pred, ref in zip(all_preds, all_refs)]
-        # 批量计算BERTScore
-        P, R, F1 = bert_score(all_preds, all_refs, lang='en', rescale_with_baseline=True)
-        F1 = F1.cpu().numpy() if hasattr(F1, 'cpu') else F1  # 兼容tensor
-        # 再遍历节点，填充node_matrix
-        for idx, i in enumerate(test_src_indices):
-            node_matrix = {}
-            node_matrix['ROUGE_L'] = rouge_scores[idx]
-            node_matrix[f"BERTScore_F1"] = float(F1[idx])
-            node_matrix.update(evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10))
-            src_results.append(node_matrix)
-    else:
-        for i in test_src_indices:
-            node_matrix = evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10)
-            src_results.append(node_matrix)
-
-
-    
-    src_agg = {
-        f"{k}_node": np.mean([result[k] for result in src_results])
-        for k in src_results[0].keys()
-    }
-    
-    return src_agg
-
-
-
-
 
 
 # nltk.download('punkt')
@@ -590,7 +528,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     results = []
-    test_data, tigger_data, dggen_data, max_node_number, node_feature = get_baseline_graphs(args)
+    test_data, tigger_data, dggen_data, max_node_number, node_text, node_feature = get_baseline_graphs(args)
     test_data = test_data[0]
     tigger_data = tigger_data[0]
     dggen_data = dggen_data[0]
@@ -602,25 +540,14 @@ if __name__ == "__main__":
     
     for baseline_name, baseline_data in [('tigger', tigger_data), ('dggen', dggen_data)]:
         baseline_edge_matrix = get_ctdg_edges(baseline_data, max_node_number)
-        node_matrixs = evaluate_nodes(test_edge_matrix,baseline_edge_matrix)
+       
+        
         graph_matrixs = evaluate_graphs(test_edge_matrix,
                                         baseline_edge_matrix,
                                         test_data, 
                                         baseline_data,
-                                        node_feature)
-        eval_matrixs = {
-            **node_matrixs,
-            **graph_matrixs
-        }
-        eval_matrixs["model"] = baseline_name
-        results.append(eval_matrixs)
-        node_matrixs = evaluate_nodes(test_edge_matrix,baseline_edge_matrix)
-        graph_matrixs = evaluate_graphs(test_edge_matrix,baseline_edge_matrix,
-                                        test_data, baseline_data)
-        eval_matrixs = {
-            **node_matrixs,
-            **graph_matrixs
-        }
+                                        node_feature=node_feature)
+        eval_matrixs = graph_matrixs
         eval_matrixs["model"] = baseline_name
         results.append(eval_matrixs)
     
