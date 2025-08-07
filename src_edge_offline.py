@@ -12,8 +12,6 @@ from transformers import BertTokenizer, BertModel
 from .utils.bwr_ctdg import (BWRCTDGALLDataset, 
                             BWRCTDGDataset, 
                             Dataset_Template)
-from .eval_utils import get_gt_data
-from .eval_utils.eval_src_edges import evaluate_all_sources, get_ctdg_edges
 from .utils.utils_parser import RegexTaggedContentParser, ModelResponse
    
 from .utils.utils import get_neighbor_sampler
@@ -475,7 +473,7 @@ def process_single_edge_attr_prediction(
 ) -> Dict:
     edge_examples = []
     
-    for dst_id, edge_id, t in zip(dst_ids, edge_ids, ts):
+    for dst_id, edge_id in zip(dst_ids, edge_ids):
         dst_id = dst_id.item()
         edge_id = edge_id.item()
         agent_text, agent_parser = predict_edge(
@@ -619,17 +617,6 @@ def get_gen_data(src_dsts) -> TemporalData:
     return TemporalData(src=src, dst=dst, t=t, msg=msg)
 
 
-def eval_graph(
-                      max_node_number,    
-                     gt_graph:TemporalData,
-                     gen_graph:TemporalData):
-    gen_matrix = get_ctdg_edges(gen_graph, max_node_number)
-    gt_matrix = get_ctdg_edges(gt_graph, max_node_number)
-    eval_matrixs = evaluate_all_sources(gt_matrix,
-                                        gen_matrix,
-                                        gt_graph,
-                                        gen_graph)
-    return eval_matrixs
    
     
 
@@ -781,13 +768,6 @@ def main_infer_dst(dx_src_path: str = None):
                              recall_inductive=False
                              )
         query_examples_all_result = pd.read_csv(query_result_path)
-        if args.eval_query_graphs:
-            eval_matrixs = evaluate_query_graphs(data_ctdg,
-                                  query_examples_all_result,
-                                  node_msg=args.node_msg,
-                                  edge_msg=args.edge_msg)
-            eval_matrixs["experiment_name"] = query_file_name.replace(".csv", "")
-            report_df = pd.concat([report_df, pd.DataFrame([eval_matrixs])], ignore_index=True)
     else:
         query_examples_all_result = None
         
@@ -896,13 +876,7 @@ def main():
                              recall_inductive=False
                              )
         query_examples_all_result = pd.read_csv(query_result_path)
-        if args.eval_query_graphs:
-            eval_matrixs = evaluate_query_graphs(data_ctdg,
-                                  query_examples_all_result,
-                                  node_msg=args.node_msg,
-                                  edge_msg=args.edge_msg)
-            eval_matrixs["experiment_name"] = query_file_name.replace(".csv", "")
-            report_df = pd.concat([report_df, pd.DataFrame([eval_matrixs])], ignore_index=True)
+        
     else:
         query_examples_all_result = None
         
@@ -1337,7 +1311,7 @@ def process_query_result(
                 "parsed": query_parser.parse(ModelResponse(row[gen_col])).parsed,
                 "success": True
             } )
-        except:
+        except Exception as e:
             parsed_results.append({
                 "parsed": None,
                 "success": False
@@ -1382,8 +1356,9 @@ def process_query_result(
                                                                 filter_rule,
                                                                 recall_common_neighbor=recall_common_neighbor,
                                                                 recall_inductive=recall_inductive,
-                                                                recall_alpha=1
+                                                                recall_alpha=3
                                                             )
+            candidate_dst_ids["dst_ids"] = candidate_dst_ids["dst_ids"][:np.sum(dx_src_list)]
             # 为每个 pred_idx 分配对应的时间，并根据 dx_src_list[pred_idx] 的数量重复该时间
             times = []
             for pred_idx in identifier_map[row["src_idx"]]["pred_ids"]:
@@ -1403,9 +1378,24 @@ def process_query_result(
                                     query_edges["t"].values)
             
             candidate_dst_ids_all.append((query_edges,score))
+        
+        # score candidates
         # 按照score对candidate_dst_ids_all进行排序，由高到低
         candidate_dst_ids_all.sort(key=lambda x: x[1], reverse=True)
         query_edges_src_all.append(candidate_dst_ids_all[0][0])
+        
+        # # 将 candidate_dst_ids_all 的 query_edges concat 并且按照频率从高到低排序，选择 iloc[:dx_src] 的边
+        # # 1. 合并所有 query_edges
+        # all_edges = pd.concat([item[0] for item in candidate_dst_ids_all], ignore_index=True)
+        # # 2. 统计每个 (src_idx, dst_idx, t) 的出现次数
+        # edge_counts = all_edges.value_counts(subset=["src_idx", "dst_idx", "t"]).reset_index(name="count")
+        # # 3. 按照频率从高到低排序
+        # edge_counts = edge_counts.sort_values("count", ascending=False)
+        # # 4. 选择 iloc[:dx_src] 的边
+        # dx_src = int(np.sum(identifier_map[src_id]["dx_src_list"]))
+        # selected_edges = edge_counts.iloc[:dx_src][["src_idx", "dst_idx", "t"]].copy()
+        # # 5. 添加到 query_edges_src_all
+        # query_edges_src_all.append(selected_edges)
         
     query_edges_src_all = pd.concat(query_edges_src_all, ignore_index=True) # 含有src,dst,t, edge_id 四列
     # 直接使用 np.arange 设置 edge_id 列
@@ -1487,7 +1477,7 @@ def execute_search_edge_label_toolkit(
         return {}
         
         
-def eval_edge_text(
+def get_eval_edge_text_prompt(
         edge_examples_all_result:pd.DataFrame,
     ):
     eval_prompts = []
@@ -1551,7 +1541,7 @@ def process_edge_result(args,
                 "parsed": edge_parser.parse(ModelResponse(row[gen_col])).parsed,
                 "success": True
             } )
-        except:
+        except Exception as e:
             parsed_results.append({
                 "parsed": None,
                 "success": False
@@ -1648,255 +1638,13 @@ def process_edge_result(args,
     
     
     edges_all = pd.concat(edges_all,ignore_index=True) # 含有src,dst,t,edge_id,edge_label,edge_text
-    eval_prompts = eval_edge_text(edges_all)
+    eval_prompts = get_eval_edge_text_prompt(edges_all)
     prompt_dir = os.path.dirname(args.edge_save_path)
     eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
     edges_all.to_csv(args.edge_result_path, index=False)
     
     print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
     print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
-    
-def get_query_gen_data(query_df:pd.DataFrame,
-                       data_ctdg: BWRCTDGDataset,
-                       node_msg: bool = False,
-                        edge_msg: bool = False,
-                        ) -> TemporalData:
-    # 初始化边列表
-    edges = []
-   
-    max_node_number = data_ctdg.node_text.shape[0] -1
-
-    from collections import Counter
-    for _, row in query_df.iterrows():
-        src_id = int(float(row["src_idx"]))
-        if isinstance(row["processed_candidate_dst_ids"], str):
-            candidate_dst_ids = eval(row["processed_candidate_dst_ids"])
-        else: candidate_dst_ids = row["processed_candidate_dst_ids"]
-        candidate_dst_ids = np.array(list(filter(lambda x: not isinstance(x,str) and x is not None and x<=max_node_number, candidate_dst_ids)))
-       
-        candidate_dst_ids = [dst_id for dst_id, _ in Counter(candidate_dst_ids).most_common()]
-        t = row["t"]
-        dx_src = int(row["dx_src"])
-        # 为每个候选目标节点创建边
-        for idx, dst_id in enumerate(candidate_dst_ids):
-            if idx>=dx_src: break
-            if not edge_msg and not node_msg:
-                edge = {
-                "src_idx": src_id,
-                "dst_idx": int(dst_id),
-                "t": int(t)
-                }
-                edges.append(edge)
-                continue
-            elif node_msg and not edge_msg:
-                msg = torch.tensor(np.concatenate([data_ctdg.node_feature[src_id], 
-                                                 data_ctdg.node_feature[dst_id]]), dtype=torch.float32)
-            elif edge_msg and not node_msg:
-                msg = torch.tensor(row["edge_msg"], dtype=torch.float32)
-            else:
-                msg = None
-                
-            edge = {
-                "src_idx": src_id,
-                "dst_idx": dst_id,
-                "t": t,
-                "msg": msg
-            }
-            edges.append(edge)
-    
-    # 将边数据转换为张量
-    src = torch.tensor([edge["src_idx"] for edge in edges], dtype=torch.int64)
-    dst = torch.tensor([edge["dst_idx"] for edge in edges], dtype=torch.int64)
-    t = torch.tensor([edge["t"] for edge in edges], dtype=torch.int64)
-    if "msg" in edges[0].keys() and edges[0]["msg"] != None:
-        msg = torch.stack([edge["msg"] for edge in edges], dim=0).to(torch.float32)
-        # 创建并返回时序数据对象
-        return TemporalData(src=src, dst=dst, t=t, msg=msg)
-    else:
-        return TemporalData(src, dst, t)
-    
-    
-def get_reward_gen_data(reward_df:pd.DataFrame,
-                       data_ctdg: BWRCTDGDataset,
-                       reward_col: str = "reward",
-                       node_msg: bool = False,
-                        edge_msg: bool = False,
-                        ) -> TemporalData:
-    # 初始化边列表
-    edges = []
-    
-    # 遍历query_df中的每一行
-    # 按identifier分组并聚合processed_candidate_dst_ids
-    def get_max_reward_row(group):
-        max_reward_idx = group[reward_col].idxmax()
-        # max_reward_idx = group['overlap_len'].idxmax()
-        # max_reward_idx = group['output_gt_reward'].idxmax()
-        return pd.Series({
-            'processed_candidate_dst_ids': eval(group.loc[max_reward_idx, 'processed_candidate_dst_ids']),
-            'selected_dst_ids': eval(group.loc[max_reward_idx, 'selected_dst_ids']),
-            'src_id': group.loc[max_reward_idx, 'src_id'],
-            'dx_src': group.loc[max_reward_idx, 'dx_src'],
-            't': group.loc[max_reward_idx, 't'],
-            'reward': group.loc[max_reward_idx, 'reward']
-        })
-
-    grouped_df = reward_df.groupby('identifier').apply(get_max_reward_row).reset_index()
-    
-    reward_df = grouped_df
-    max_node_number = data_ctdg.node_text.shape[0] -1
-    from collections import Counter
-    for _, row in reward_df.iterrows():
-        src_id = int(float(row["src_idx"]))
-        if isinstance(row["processed_candidate_dst_ids"], str):
-            candidate_dst_ids = eval(row["processed_candidate_dst_ids"])
-        else: candidate_dst_ids = row["processed_candidate_dst_ids"]
-        candidate_dst_ids = np.array(list(filter(lambda x: not isinstance(x,str) and x is not None and x<=max_node_number, candidate_dst_ids)))
-        # 使用Counter直接计算频率并排序
-        candidate_dst_ids = [dst_id for dst_id, _ in Counter(candidate_dst_ids).most_common()]
-        t = row["t"]
-        dx_src = int(row["dx_src"])
-        # 为每个候选目标节点创建边
-        for idx, dst_id in enumerate(candidate_dst_ids):
-            if idx>=dx_src: break
-            if not edge_msg and not node_msg:
-                edge = {
-                "src_idx": src_id,
-                "dst_idx": int(dst_id),
-                "t": int(t)
-                }
-                edges.append(edge)
-                continue
-            elif node_msg and not edge_msg:
-                msg = torch.tensor(np.concatenate([data_ctdg.node_feature[src_id], 
-                                                 data_ctdg.node_feature[dst_id]]), dtype=torch.float32)
-            elif edge_msg and not node_msg:
-                msg = torch.tensor(row["edge_msg"], dtype=torch.float32)
-            else:
-                msg = None
-                
-            edge = {
-                "src_idx": src_id,
-                "dst_idx": dst_id,
-                "t": t,
-                "msg": msg
-            }
-            edges.append(edge)
-    
-    # 将边数据转换为张量
-    src = torch.tensor([edge["src_idx"] for edge in edges], dtype=torch.int64)
-    dst = torch.tensor([edge["dst_idx"] for edge in edges], dtype=torch.int64)
-    t = torch.tensor([edge["t"] for edge in edges], dtype=torch.int64)
-    if "msg" in edges[0].keys() and edges[0]["msg"] != None:
-        msg = torch.stack([edge["msg"] for edge in edges], dim=0).to(torch.float32)
-        # 创建并返回时序数据对象
-        return TemporalData(src=src, dst=dst, t=t, msg=msg)
-    else:
-        return TemporalData(src, dst, t)
-
-
-def evaluate_query_graphs(data:BWRCTDGDataset,
-                          query_df: pd.DataFrame,
-                          node_msg: bool = False,
-                          edge_msg: bool = False,
-                          ):
-    gt_graph = get_gt_data(data, 
-                           node_msg=node_msg,
-                           edge_msg=edge_msg)
-    
-    gen_graph = get_query_gen_data(query_df,
-                                  data,
-                                  node_msg=node_msg,
-                                  edge_msg=edge_msg
-                                  )
-    
-    #获取两个图中每个节点的边数量(包括作为src和dst)
-    gt_src_counts = torch.bincount(gt_graph.src)
-    gen_src_counts = torch.bincount(gen_graph.src)
-    gt_dst_counts = torch.bincount(gt_graph.dst)
-    gen_dst_counts = torch.bincount(gen_graph.dst)
-    
-    # 合并src和dst的计数
-    max_node = max(gt_src_counts.size(0), gt_dst_counts.size(0), gen_src_counts.size(0), gen_dst_counts.size(0))
-    gt_src_counts = torch.nn.functional.pad(gt_src_counts, (0, max_node - gt_src_counts.size(0)))
-    gt_dst_counts = torch.nn.functional.pad(gt_dst_counts, (0, max_node - gt_dst_counts.size(0)))
-    gen_src_counts = torch.nn.functional.pad(gen_src_counts, (0, max_node - gen_src_counts.size(0)))
-    gen_dst_counts = torch.nn.functional.pad(gen_dst_counts, (0, max_node - gen_dst_counts.size(0)))
-    
-    gt_node_counts = gt_src_counts + gt_dst_counts
-    gen_node_counts = gen_src_counts + gen_dst_counts
-    
-    # 找出边数量不一致的src节点
-    max_src = max(gt_src_counts.size(0), gen_src_counts.size(0))
-    gt_src_counts = torch.nn.functional.pad(gt_src_counts, (0, max_src - gt_src_counts.size(0)))
-    gen_src_counts = torch.nn.functional.pad(gen_src_counts, (0, max_src - gen_src_counts.size(0)))
-    
-    inconsistent_srcs = torch.where(gt_src_counts != gen_src_counts)[0]
-    
-    print(f"边数量不一致的src节点数量: {len(inconsistent_srcs)}")
-    print(f"边数量不一致的src节点ID: {inconsistent_srcs.tolist()}")
-    
-    # 打印每个不一致src节点的具体边数量
-    for src in inconsistent_srcs:
-        print(f"src节点 {src}:")
-        print(f"  GT图边数量: {gt_src_counts[src]}")
-        print(f"  生成图边数量: {gen_src_counts[src]}")
-        
-        
-    eval_matrixs = eval_graph(data.node_text.shape[0]-1,
-                              gt_graph,
-                              gen_graph)
-    
-    print(f"评估指标: {eval_matrixs}")
-    return eval_matrixs
-    
-def evaluate_reward_graphs(data:BWRCTDGDataset,
-                          reward_df: pd.DataFrame,
-                          reward_col: str = "reward",
-                          node_msg: bool = False,
-                          edge_msg: bool = False,
-                          
-                          ):
-    gt_graph = get_gt_data(data, 
-                           node_msg=node_msg,
-                           edge_msg=edge_msg)
-    
-    gen_graph = get_reward_gen_data(reward_df,
-                                  data,
-                                  reward_col=reward_col,
-                                  node_msg=node_msg,
-                                  edge_msg=edge_msg
-                                  )
-    
-    #获取两个图中每个src节点的边数量
-    gt_src_counts = torch.bincount(gt_graph.src)
-    gen_src_counts = torch.bincount(gen_graph.src)
-    
-    # 找出边数量不一致的src节点
-    max_src = max(gt_src_counts.size(0), gen_src_counts.size(0))
-    gt_src_counts = torch.nn.functional.pad(gt_src_counts, (0, max_src - gt_src_counts.size(0)))
-    gen_src_counts = torch.nn.functional.pad(gen_src_counts, (0, max_src - gen_src_counts.size(0)))
-    
-    inconsistent_srcs = torch.where(gt_src_counts != gen_src_counts)[0]
-    
-    print(f"边数量不一致的src节点数量: {len(inconsistent_srcs)}")
-    print(f"边数量不一致的src节点ID: {inconsistent_srcs.tolist()}")
-    
-    # 打印每个不一致src节点的具体边数量
-    for src in inconsistent_srcs:
-        print(f"src节点 {src}:")
-        print(f"  GT图边数量: {gt_src_counts[src]}")
-        print(f"  生成图边数量: {gen_src_counts[src]}")
-        
-        
-    eval_matrixs = eval_graph(data.node_text.shape[0]-1,
-                              gt_graph,
-                              gen_graph)
-    
-    print(f"评估指标: {eval_matrixs}")
-    return eval_matrixs
-
-
-    
     
     
 
@@ -2010,6 +1758,3 @@ if __name__ == "__main__":
     #  for sft
     if args.sft:
         main_inference_offline_cold_start() 
-    
-
-    
