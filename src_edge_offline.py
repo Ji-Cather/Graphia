@@ -654,7 +654,6 @@ def main_infer_edge(query_result_path):
     query_examples_all_result = pd.read_csv(query_result_path)
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
     result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
-    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv')
 
     os.makedirs(prompt_dir, exist_ok=True)
     os.makedirs(result_dir, exist_ok=True)
@@ -739,13 +738,7 @@ def main_infer_dst(dx_src_path: str = None):
     
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
     result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
-    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/inference/report.csv')
-
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    if os.path.exists(report_path):
-        report_df = pd.read_csv(report_path)
-    else:
-        report_df = pd.DataFrame()
+   
 
     os.makedirs(prompt_dir, exist_ok=True)
     os.makedirs(result_dir, exist_ok=True)
@@ -768,13 +761,6 @@ def main_infer_dst(dx_src_path: str = None):
                              recall_common_neighbor=True,
                              recall_inductive=False
                              )
-        query_examples_all_result = pd.read_csv(query_result_path)
-    else:
-        query_examples_all_result = None
-        
-    if report_df.shape[0] >0:
-        report_df.set_index("experiment_name", inplace=True)
-        report_df.to_csv(report_path)
     
     
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
@@ -847,14 +833,7 @@ def main():
 
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/teacher_forcing')
     result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing')
-    report_path = os.path.join(args.save_root,f'reports/{args.model_config_name}/{args.data_name}/{args.split}/teacher_forcing/report.csv')
-
-    os.makedirs(os.path.dirname(report_path), exist_ok=True)
-    if os.path.exists(report_path):
-        report_df = pd.read_csv(report_path)
-    else:
-        report_df = pd.DataFrame()
-
+   
     os.makedirs(prompt_dir, exist_ok=True)
     os.makedirs(result_dir, exist_ok=True)
 
@@ -876,15 +855,8 @@ def main():
                              recall_common_neighbor=True,
                              recall_inductive=False
                              )
-        query_examples_all_result = pd.read_csv(query_result_path)
         
-    else:
-        query_examples_all_result = None
         
-    if report_df.shape[0] >0:
-        report_df.set_index("experiment_name", inplace=True)
-        report_df.to_csv(report_path)
-    
     
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
     "predicting edges"):
@@ -991,7 +963,165 @@ def main():
     print(f"Edge examples prompt max length: {edge_text_examples_all['prompt'].str.len().max()}")
     
     
+def main_idgg(dx_src_path: str = None):
+    bwr_ctdg = BWRCTDGALLDataset(
+        pred_ratio=args.pred_ratio,
+        bwr=args.bwr,
+        time_window=args.time_window,
+        root=os.path.join(args.data_root,args.data_name),
+        use_feature=args.use_feature,
+        cm_order=args.cm_order,
+        # force_reload=True
+    )
+    
+    environment_data = {
+            'dst_min': bwr_ctdg.dst_min,
+            'dst_max': bwr_ctdg.dst_max,
+            'bwr': bwr_ctdg.bwr,
+            'data_name': bwr_ctdg.data_name,
+            "description":Dataset_Template[bwr_ctdg.data_name]['description']
+        }
+    
+    # 假设not teacher forcing，这边要加入degree predictor结果的load    
+    if args.split == 'train':
+        data_ctdg = bwr_ctdg.train_data
+    elif args.split == 'val':
+        data_ctdg = bwr_ctdg.val_data
+    elif args.split == 'test':
+        data_ctdg = bwr_ctdg.test_data
+    else:
+        raise ValueError(f"Invalid split: {args.split}")
 
+    prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/idgg')
+    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/idgg')
+   
+    os.makedirs(prompt_dir, exist_ok=True)
+    os.makedirs(result_dir, exist_ok=True)
+    
+    data_ctdg.load_degree_predictor_results(dx_src_path)
+
+    data_ctdg_loader = DataLoader(data_ctdg, 
+                                batch_size=1, 
+                                shuffle=False,
+                                collate_fn=custom_collate
+                                )
+    
+    query_file_name = f"query_examples.csv"
+    query_all_examples = pd.DataFrame()
+    if os.path.exists(os.path.join(result_dir, query_file_name)):
+        query_result_path = os.path.join(result_dir, query_file_name)
+        process_query_result(environment_data, 
+                             data_ctdg,
+                             True,
+                             result_path=query_result_path,
+                             interaction_cache=data_ctdg.interaction_cache,
+                             recall_common_neighbor=True,
+                             recall_inductive=False
+                             )
+        
+        
+    
+    for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
+    "predicting edges"):
+
+        # batch_data["src_model_pred_degree"] = batch_data["src_node_degree"]    
+        dx_src_all_batch_gt = np.sum(batch_data['src_node_degree'], axis = -1)
+        dx_src_all_batch = np.sum(batch_data['src_model_pred_degree'], axis = -1)
+        non_zero_indices = np.where(dx_src_all_batch_gt>0)
+        dst_node_ids = np.arange(environment_data['dst_min'], environment_data['dst_max'] + 1)
+    
+        for batch_inter_idx, bwr_idx in zip(non_zero_indices[0], 
+                                                    non_zero_indices[1]):
+            src_id = batch_data['src_node_ids'][batch_inter_idx][bwr_idx]
+            input_edge_ids = batch_data['input_edge_ids'][batch_inter_idx][bwr_idx]
+            dx_src_all = dx_src_all_batch[batch_inter_idx][bwr_idx] # 某些dst可能重复
+            dx_src_all_gt = dx_src_all_batch_gt[batch_inter_idx][bwr_idx]
+            
+            if dx_src_all_gt > 0 and dx_src_all > 0:
+                query_examples = process_single_prediction(
+                    dx_src_all, src_id,  environment_data,
+                    data_ctdg, args,  data_ctdg.interaction_cache, 
+                    input_edge_ids
+                )
+                query_all_examples = pd.concat([query_all_examples, 
+                                                pd.DataFrame(query_examples)], 
+                                                ignore_index=True)
+            
+
+    edge_text_examples_all = pd.DataFrame()
+    for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader), "predicting edges"):
+        ## 训练过程 teacher forcing 
+        batch_data["src_model_pred_degree"] = batch_data["src_node_degree"]        
+        non_zero_indices = np.where(batch_data['src_model_pred_degree']>0)
+        for batch_inter_idx, bwr_idx, pred_idx in zip(non_zero_indices[0], 
+                                                    non_zero_indices[1], 
+                                                    non_zero_indices[2]):
+            src_id = batch_data['src_node_ids'][batch_inter_idx][bwr_idx]
+            input_edge_ids = batch_data['input_edge_ids'][batch_inter_idx][bwr_idx]
+            dx_src = batch_data['src_model_pred_degree'][batch_inter_idx][bwr_idx][pred_idx]
+            pred_dx_src_sum = batch_data['src_model_pred_degree'][batch_inter_idx][bwr_idx][:pred_idx].sum()
+            output_edge_ids = batch_data['output_edge_ids'][batch_inter_idx][bwr_idx][pred_dx_src_sum:pred_dx_src_sum+dx_src]
+            dst_ids = data_ctdg.get_dst_ids(output_edge_ids)
+            edge_text_examples = process_single_edge_attr_prediction(
+                src_id,
+                dst_ids,
+                output_edge_ids,
+                environment_data,
+                data_ctdg,
+                args,
+                data_ctdg.interaction_cache,
+                input_edge_ids,
+                type = "gt"
+            )
+            
+            edge_text_examples_all = pd.concat([edge_text_examples_all, 
+                                                pd.DataFrame(edge_text_examples)], 
+                                                ignore_index=True)
+
+    edge_text_examples_all.drop_duplicates(subset=["edge_id"], inplace=True)
+    query_all_examples.drop_duplicates(subset=['src_idx'], inplace=True)
+    
+    columns_to_drop = ["instruction", "input"]
+    query_all_examples.drop(columns=[col for col in columns_to_drop if col in query_all_examples.columns], 
+            inplace=True)
+    edge_text_examples_all.drop(columns=[col for col in columns_to_drop if col in edge_text_examples_all.columns], 
+            inplace=True)
+
+
+    query_file_name = "query_examples.csv"
+    query_all_examples['tag'] = args.split
+    query_all_examples['domain'] = 'dst_rule'
+    query_all_examples = assign_difficulty(query_all_examples)
+    
+    edge_text_examples_all['tag'] = args.split
+    edge_text_examples_all['domain'] = 'edge_rule'
+    indices = edge_text_examples_all.sample(frac=0.5, random_state=42).index
+    edge_text_examples_all.loc[indices, 'domain'] = 'edge_text_rule'
+    edge_text_examples_all["difficulty"] = 1
+
+
+    combined_df = pd.concat([query_all_examples, edge_text_examples_all], ignore_index=True)
+    query_sub = query_all_examples[query_all_examples["difficulty"] < 3]
+    edge_sub_index = edge_text_examples_all.sample(frac=query_sub.shape[0]/edge_text_examples_all.shape[0], random_state=0).index
+    edge_sub = edge_text_examples_all.loc[edge_sub_index]
+    assert edge_sub[edge_sub["domain"]== 'edge_rule'].shape[0] != 0
+
+    sub_df = pd.concat([query_sub, edge_sub], ignore_index=True)
+
+    # for multi domain rl
+    combined_df.to_csv(os.path.join(prompt_dir, 'combined_examples.csv'), index=False)
+    sub_df.to_csv(os.path.join(prompt_dir, 'combined_easy_examples.csv'), index=False)
+    
+    # for single-domain rl
+    query_all_examples.to_csv(os.path.join(prompt_dir, 'query_examples.csv'), index=False)
+    edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
+    
+    print(f"Query examples prompt mean length: {query_all_examples['prompt'].str.len().mean():.2f}")
+    print(f"Query examples prompt max length: {query_all_examples['prompt'].str.len().max()}")
+    
+    print(f"Edge examples prompt mean length: {edge_text_examples_all['prompt'].str.len().mean():.2f}")
+    print(f"Edge examples prompt max length: {edge_text_examples_all['prompt'].str.len().max()}")
+    
 
     
 
@@ -1681,6 +1811,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_config_name', type=str, default='default', help='模型配置名称')
     parser.add_argument('--sft', action= "store_true", help = "generate sft data")
     parser.add_argument('--rl', action= "store_true", help = "generate rl data")
+    parser.add_argument('--idgg_rl', action= "store_true", help = "generate rl data")
     
     parser.add_argument('--infer_dst', action= "store_true", help = "generate infer dst data")
     parser.add_argument('--dx_src_path', type=str, default=None, help='评估查询图的路径')
@@ -1719,6 +1850,9 @@ if __name__ == "__main__":
     # for rl, inference 
     if args.rl:
         main() # O(N)
+    
+    if args.idgg_rl:
+        main_idgg(dx_src_path = args.dx_src_path) # O(N)
     
     if args.infer_dst:
         assert args.dx_src_path is not None, "must pass degree prediction data for infer"
