@@ -1,0 +1,46 @@
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/query_examples_8.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst/8days_dytag_small_text_en/test/inference/query_examples_8.jsonl
+
+    # query
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-dst-2/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+
+
+    ## grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge
+    # edge 
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/edge_text_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/inference/edge_text_prompt.jsonl
+
+    # edge eval
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/edge_text_eval_prompt.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/grpo_8days_dytag_small_text_en_qwen3_sft-8b-nothink-easy-edge/8days_dytag_small_text_en/test/inference/edge_text_eval_prompt.jsonl
+
+
+    ## qwen3
+    # query
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+
+    # edge 
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/edge_text_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3/8days_dytag_small_text_en/test/inference/edge_text_prompt.jsonl
+
+    # edge eval
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/qwen3/edge_text_eval_prompt.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3/8days_dytag_small_text_en/test/inference/edge_text_eval_prompt.jsonl
+
+
+    ## qwen3-sft
+    # query
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/inference/query_examples.jsonl
+    
+    # edge 
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/edge_text_examples.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/inference/edge_text_prompt.jsonl
+
+    # edge eval
+    # inputs: /data/oss_bucket_0/jjr/LLMGGen/prompt_data/8days_dytag_small_text_en/test/inference/qwen3_sft/edge_text_eval_prompt.jsonl
+    # outputs: /data/oss_bucket_0/jjr/LLMGGen/results/qwen3_sft/8days_dytag_small_text_en/test/inference/edge_text_eval_prompt.jsonl
+
+    

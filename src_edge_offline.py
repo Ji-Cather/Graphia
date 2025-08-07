@@ -17,6 +17,7 @@ from .utils.utils_parser import RegexTaggedContentParser, ModelResponse
 from .utils.utils import get_neighbor_sampler
 from .utils.DataLoader import get_link_prediction_data
 from .load_gnn_judger import create_link_prediction_model,compute_src_dsts_score, create_edge_classification_model
+
 class BertEmbedder:
     def __init__(self, model_name = "prajjwal1/bert-tiny"):
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -1038,7 +1039,7 @@ def main_inference_offline_cold_start():
     query_positive_examples_all = pd.DataFrame()   
     edge_text_examples_all = pd.DataFrame()
 
-    bert_embedder = BertEmbedder()
+    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
     "predicting edges"):
         ## 训练过程 teacher forcing 
@@ -1273,7 +1274,7 @@ def process_query_result(
         data_ctdg.load_degree_predictor_results(args.dx_src_path)
 
     
-    bert_embedder = BertEmbedder()
+    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
     query_parser = RegexTaggedContentParser(
         required_keys=Dataset_Template[environment_data['data_name']]['node_text_cols'],
     )
@@ -1528,7 +1529,7 @@ def process_edge_result(args,
     else:
         raise ValueError(f"Invalid split: {args.split}")
     
-    bert_embedder = BertEmbedder()
+    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
     edge_parser = RegexTaggedContentParser(
         required_keys=Dataset_Template[environment_data['data_name']]['edge_text_cols'],
     )

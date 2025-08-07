@@ -272,7 +272,7 @@ if __name__ == "__main__":
 
     args = get_edge_classification_args(is_evaluation=False)
     node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_num = \
-        get_link_prediction_data(data_name=args.data_name, val_ratio=args.val_ratio, test_ratio=args.test_ratio, args = args)
+        get_link_prediction_data(args = args)
     full_neighbor_sampler = get_neighbor_sampler(
         data=full_data, 
         sample_neighbor_strategy=args.sample_neighbor_strategy,

@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # get data for training, validation and testing
     node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_num = \
-        get_link_prediction_data(data_name=args.data_name, val_ratio=args.val_ratio, test_ratio=args.test_ratio, args=args)
+        get_link_prediction_data(args = args)
 
     # initialize validation and test neighbor sampler to retrieve temporal graph
     full_neighbor_sampler = get_neighbor_sampler(data=full_data, sample_neighbor_strategy=args.sample_neighbor_strategy,
@@ -76,16 +76,16 @@ if __name__ == "__main__":
             set_random_seed(seed=run)
 
             args.seed = run
-            args.load_model_name = f'{args.model_name}_seed{args.seed}'
+            args.load_model_name = f'{args.model_name}_seed{args.seed}{args.use_feature}'
             args.save_result_name = f'{args.negative_sample_strategy}_negative_sampling_{args.model_name}_seed{args.seed}'
 
             # set up logger
             logging.basicConfig(level=logging.INFO)
             logger = logging.getLogger()
             logger.setLevel(logging.DEBUG)
-            os.makedirs(f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/", exist_ok=True)
+            os.makedirs(os.path.join(args.save_root, f"logs/{args.model_name}/{args.data_name}/{args.save_result_name}/"), exist_ok=True)
             # create file handler that logs debug and higher level messages
-            fh = logging.FileHandler(f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/{str(time.time())}.log")
+            fh = logging.FileHandler(os.path.join(args.save_root, f"logs/{args.model_name}/{args.data_name}/{args.save_result_name}/{str(time.time())}.log"))
             fh.setLevel(logging.DEBUG)
             # create console handler with a higher log level
             ch = logging.StreamHandler()
@@ -125,7 +125,7 @@ if __name__ == "__main__":
                                        num_depths=args.num_neighbors + 1, dropout=args.dropout, device=args.device)
             elif args.model_name == 'GraphMixer':
                 dynamic_backbone = GraphMixer(node_raw_features=node_raw_features, edge_raw_features=edge_raw_features, neighbor_sampler=full_neighbor_sampler,
-                                              time_feat_dim=args.time_feat_dim, num_tokens=args.num_neighbors, num_layers=args.num_layers, dropout=args.dropout, device=args.device)
+                                              time_feat_dim=args.time_feat_dim, num_neighbors=args.num_neighbors, num_layers=args.num_layers, dropout=args.dropout, device=args.device)
             elif args.model_name == 'DyGFormer':
                 dynamic_backbone = DyGFormer(node_raw_features=node_raw_features, edge_raw_features=edge_raw_features, neighbor_sampler=full_neighbor_sampler,
                                              time_feat_dim=args.time_feat_dim, channel_embedding_dim=args.channel_embedding_dim, patch_size=args.patch_size,
@@ -141,7 +141,7 @@ if __name__ == "__main__":
                         f'{get_parameter_sizes(model) * 4 / 1024} KB, {get_parameter_sizes(model) * 4 / 1024 / 1024} MB.')
 
             # load the saved model
-            load_model_folder = f"./saved_models/{args.model_name}/{args.data_name}/{args.load_model_name}"
+            load_model_folder = os.path.join(args.save_root, f"saved_models/{args.model_name}/{args.data_name}/{args.load_model_name}")
             early_stopping = EarlyStopping(patience=0, save_model_folder=load_model_folder,
                                            save_model_name=args.load_model_name, logger=logger, model_name=args.model_name)
             early_stopping.load_checkpoint(model, map_location='cpu')
@@ -266,7 +266,7 @@ if __name__ == "__main__":
                 }
             result_json = json.dumps(result_json, indent=4)
 
-            save_result_folder = f"./saved_results/{args.model_name}/{args.data_name}"
+            save_result_folder = os.path.join(args.save_root, f"saved_results/{args.model_name}/{args.data_name}")
             os.makedirs(save_result_folder, exist_ok=True)
             save_result_path = os.path.join(save_result_folder, f"{args.save_result_name}.json")
             with open(save_result_path, 'w') as file:

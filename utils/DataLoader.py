@@ -106,7 +106,7 @@ def get_link_prediction_data(args):
     """
     if args.data_name in ["8days_dytag_small_text_en"]:
         # train for dytag dataset
-        from .utils.bwr_ctdg import BWRCTDGDataset, BWRCTDGALLDataset
+
         import torch  
         bwr_ctdg = BWRCTDGALLDataset(
             pred_ratio= args.pred_ratio,
@@ -205,7 +205,6 @@ def get_edge_classification_data(args):
      # Load data and train val test split
     if args.data_name in ["8days_dytag_small_text_en"]:
         # train for dytag dataset
-        from .utils.bwr_ctdg import BWRCTDGDataset, BWRCTDGALLDataset
         import torch  
         bwr_ctdg = BWRCTDGALLDataset(
             pred_ratio= args.pred_ratio,
