@@ -224,7 +224,7 @@ def get_node_regression_args(is_evaluation: bool = False):
 
     parser.add_argument("--rescale", action="store_true", help="Whether to rescale the outdegrees by the maximum edge number")
 
-
+    parser.add_argument('--max_len', type=int, default=10000, help='max length for positional embedding')
     parser.add_argument('--save_root', type=str, default="./", help='save root dir')
     parser.add_argument('--data_root', type=str, default="./data", help='data root dir')
     try:

@@ -128,11 +128,11 @@ class TimeFeatureEmbedding(nn.Module):
         return self.embed(x)
 
 class DataEmbedding(nn.Module):
-    def __init__(self, c_in, d_model, embed_type='fixed',  T = 'm', freq='d',input_time_len = 32, dropout=0.1):
+    def __init__(self, c_in, d_model, embed_type='fixed',  T = 'm', freq='d',input_time_len = 32, dropout=0.1, max_len=10000):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
-        self.position_embedding = PositionalEmbedding(d_model=d_model,max_len= 10000)
+        self.position_embedding = PositionalEmbedding(d_model=d_model, max_len= max_len)
         # self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type, freq=freq) if \
         # embed_type!='timeF' else TimeFeatureEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
         self.temporal_embedding = TemporalGapEmbedding(d_model=d_model, 

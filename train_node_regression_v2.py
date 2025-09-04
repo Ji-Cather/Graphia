@@ -121,6 +121,7 @@ if __name__ == "__main__":
                             output_attention=False,
                             T = 'm',
                             freq = 'd',
+                            max_len=args.max_len
                             )
         
         

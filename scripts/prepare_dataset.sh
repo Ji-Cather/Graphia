@@ -1,12 +1,12 @@
-python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data/8days_dytag_small_text_en --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text_en --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data/8days_dytag_small_text --time_window 86400 --bwr 1980 --use_feature bert --cm_order True--force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data/weibo_tech --time_window 86400 --bwr 13556 --use_feature bert --cm_order True--force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_tech --time_window 86400 --bwr 13556 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data/weibo_daily --time_window 86400 --bwr 14702 --use_feature bert --cm_order True--force_reload
+python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_daily --time_window 86400 --bwr 14702 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data/imdb --time_window 31536000 --bwr 18293 --use_feature bert --cm_order True--force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/imdb --time_window 31536000 --bwr 18293 --use_feature bert --cm_order True --force_reload
 
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data_baseline/8days_dytag_small_text --time_window 86400 --bwr 1 --use_feature bert --force_reload
 

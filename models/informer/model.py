@@ -355,7 +355,8 @@ class InformerDecoder(nn.Module):
                 output_attention = False, distil=True, mix=True,
                 device=torch.device('cuda:0'),
                 T = 'm',
-                freq='d'
+                freq='d',
+                max_len=10000
                 ):
         # 输入shape: [B, S, D] (B, seq_len, enc_in) -> [1, B, S*D]
         # 输出                                         [1, B, c_out*out_len]    -> [B, out_len, c_out]
@@ -367,8 +368,8 @@ class InformerDecoder(nn.Module):
         self.src_node_out_feature_dim = src_node_out_feature_dim
         super(InformerDecoder, self).__init__()
 
-        self.enc_embedding = DataEmbedding(node_feature_dim, d_model, embed, T, freq, input_len, dropout)
-        self.dec_embedding = DataEmbedding(node_feature_dim, d_model, embed, T, freq, input_len, dropout)
+        self.enc_embedding = DataEmbedding(node_feature_dim, d_model, embed, T, freq, input_len, dropout, max_len)
+        self.dec_embedding = DataEmbedding(node_feature_dim, d_model, embed, T, freq, input_len, dropout, max_len)
         # Attention
         Attn = ProbAttention if attn=='prob' else FullAttention
         # Encoder
