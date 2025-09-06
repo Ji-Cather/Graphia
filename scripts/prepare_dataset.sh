@@ -1,12 +1,12 @@
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text_en --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
+python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_large_text --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_tech --time_window 86400 --bwr 13556 --use_feature bert --cm_order True --force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_tech --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
-python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_daily --time_window 86400 --bwr 14702 --use_feature bert --cm_order True --force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_daily --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/imdb --time_window 31536000 --bwr 18293 --use_feature bert --cm_order True --force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/imdb --time_window 31536000 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root data_baseline/8days_dytag_small_text --time_window 86400 --bwr 1 --use_feature bert --force_reload
 
@@ -18,22 +18,18 @@ python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_dai
 
 
 # Root: data/8days_dytag_small_text
-# BWR: 1980
 # Input length: 18
 # Prediction length: 4
 
 # Root: data/weibo_tech
-# BWR: 13556
 # Input length: 5
 # Prediction length: 1
 
 # Root: data/weibo_daily
-# BWR: 14702
 # Input length: 19
 # Prediction length: 4
 
 # Root: data/imdb
-# BWR: 18293
 # Input length: 68
 # Prediction length: 17
 

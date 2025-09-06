@@ -159,8 +159,9 @@ class HistogramMatchingLoss(nn.Module):
             for j in range(y.shape[0]):
                 xy[i, j] = self.rbf_kernel(x[i], y[j])
                 
-        # 计算MMD距离
-        mmd = torch.mean(xx) + torch.mean(yy) - 2 * torch.mean(xy)
+         # 计算MMD距离
+        mmd_squared = torch.mean(xx) + torch.mean(yy) - 2 * torch.mean(xy)
+        mmd = torch.sqrt(torch.clamp(mmd_squared, min=1e-10))  # 防止负数或数值不稳定
         return mmd
         
     def compute_histogram(self, degrees, num_bins=None):

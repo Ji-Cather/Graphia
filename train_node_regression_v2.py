@@ -60,7 +60,7 @@ if __name__ == "__main__":
         set_random_seed(seed=run)
 
         args.seed = run
-        args.save_model_name = f'{args.model_name}_seed{args.seed}_bwr{args.bwr}_qm{args.quantile_mapping}_uf{args.use_feature}_cm{args.cm_order}'
+        args.save_model_name = f'{args.model_name}_seed{args.seed}_bwr{args.bwr}_qm{args.quantile_mapping}_uf{args.use_feature}_cm{args.cm_order}_rescale{args.rescale}'
 
         # set up logger
         logging.basicConfig(level=logging.INFO)

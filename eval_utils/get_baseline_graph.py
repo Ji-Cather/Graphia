@@ -70,6 +70,18 @@ def get_baseline_graphs(args):
          "8days_dytag_small_text_en":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv",
             "LLMGGen/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv"
+        ],
+        "weibo_daily":[
+            "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_daily.csv",
+            "LLMGGen/baselines/tigger/models/weibo_daily/results/generated_edges.csv"
+        ],
+        "imdb":[
+            "LLMGGen/baselines/DGGen/results/synthetic_data/imdb.csv",
+            "LLMGGen/baselines/tigger/models/imdb/results/generated_edges.csv"
+        ],
+        "weibo_tech":[
+            "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_tech.csv",
+            "LLMGGen/baselines/tigger/models/weibo_tech/results/generated_edges.csv"
         ]
     }
     

@@ -44,15 +44,22 @@ Dataset_Template = {
         },
         "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
     },
-    "8days_dytag_small_text": {
+    "8days_dytag_large_text": {
         "description": "This network represent market network of taoke members; nodes are members, edges are item propagations.",
         "edge_text_template": """
+<ts_str>{ts_str}</ts_str>
 <label>{label}</label>
 <cate_level2_name>{cate_level2_name}</cate_level2_name>
 <cate_level3_name>{cate_level3_name}</cate_level3_name>
-<price_range>{price_range}</price_range>
-<ts_str>{ts_str}</ts_str>""",
+<price_range>{price_range}</price_range>""",
         "edge_text_cols": ["label", "cate_level2_name", "cate_level3_name", "price_range", "ts_str"],
+        "edge_text_hint": {
+            "label": "Main category of the item",
+            "ts_str": "Propagation time",
+            "cate_level2_name": "Second-category of the item",
+            "cate_level3_name": "Third-category of the item",
+            "price_range": "Price range of the item",
+        },
         "node_text_template": "<portrait_name>{portrait_name}</portrait_name>",
         "node_text_cols": ["portrait_name"],
         "node_text_hint": {
