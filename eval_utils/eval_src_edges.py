@@ -316,12 +316,12 @@ def evaluate_edge_text(df):
     
 def extract_score_v3(llm_output: str):
         # 修正正则表达式：允许方括号完全缺失
-        pattern = r"(CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
+        pattern = r"(GF|CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
         
         matches = re.findall(pattern, llm_output, re.IGNORECASE)
         
         # 初始化默认值（全部设为1）
-        scores = {'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
+        scores = {'GF': 0, 'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
         
         # 更新匹配到的键值
         for key, value in matches:
@@ -414,12 +414,12 @@ def evaluate_edge_text(df):
     
 def extract_score_v3(llm_output: str):
         # 修正正则表达式：允许方括号完全缺失
-        pattern = r"(CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
+        pattern = r"(GF|CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
         
         matches = re.findall(pattern, llm_output, re.IGNORECASE)
         
         # 初始化默认值（全部设为1）
-        scores = {'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
+        scores = {'GF': 0, 'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
         
         # 更新匹配到的键值
         for key, value in matches:

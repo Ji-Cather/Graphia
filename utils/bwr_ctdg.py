@@ -24,7 +24,14 @@ Dataset_Template = {
 <label>{label}</label>
 <src_text>{src_text}</src_text>
 <dst_text>{dst_text}</dst_text>""",
+        "goal":"Post as source user to elicit a detailed text response from the destination user; label interaction type (comment or repost).",
         "edge_text_cols": ["ts_str", "label", "src_text", "dst_text"],
+        "edge_text_hint": {
+            "label": "Main category of the product",
+            "ts_str": "Interaction time",
+            "src_text": "Src user text",
+            "dst_text": "Dst user text"
+        },
         "node_text_template": """
 <user_name>{user_name}</user_name>
 <user_source>{user_source}</user_source>
@@ -52,6 +59,7 @@ Dataset_Template = {
 <cate_level2_name>{cate_level2_name}</cate_level2_name>
 <cate_level3_name>{cate_level3_name}</cate_level3_name>
 <price_range>{price_range}</price_range>""",
+         "goal":"As taoke, you should maximize the likelihood of item propagation from source member to destination member; label the main category of the item.",
         "edge_text_cols": ["label", "cate_level2_name", "cate_level3_name", "price_range", "ts_str"],
         "edge_text_hint": {
             "label": "Main category of the item",
@@ -68,6 +76,7 @@ Dataset_Template = {
     },
     "8days_dytag_small_text_en": {
         "description": "This network represent market network of taoke members; nodes are members, edges are item propagations.",
+        "goal":"Maximize the likelihood of item propagation from source member to destination member; label the main category of the item.",
         "edge_text_template": """
 <ts_str>{ts_str}</ts_str>
 <label>{label}</label>
@@ -90,6 +99,7 @@ Dataset_Template = {
     },
     "imdb": {
         "description": "This network represent social interaction graph among actors in movies.",
+        "goal": "Choose one movie-cooperator; play distinct roles in a joint movie; generate movie name, genre, and a predicted cooperation year.",
         "edge_text_template": """
 <ts_str>{ts_str}</ts_str>
 <primary_title>{primary_title}</primary_title>
@@ -114,6 +124,7 @@ Dataset_Template = {
     },
     "weibo_daily": {
         "description": "This network represent social interaction graph among Weibo users focused on technology and digital products.",
+        "goal": "Post as source user to elicit a detailed text response from the destination user; label interaction type (comment or repost), and assign a timestamp no earlier than the node's prior collaboration year.",
         "edge_text_template": """
 <ts_str>{ts_str}</ts_str>
 <label>{label}</label>

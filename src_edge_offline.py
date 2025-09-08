@@ -50,6 +50,9 @@ ACTOR_JUDGE = """
 /no_think 
 You are an expert judge evaluating the quality of a response to a given prompt. Please evaluate the role-playing ability of the ACTOR NODE based on its actor actions consistency with reference actions.
 
+The social goal for the actor is:
+    '{goal}'
+
 [Prompt]:
 {prompt}
 
@@ -60,6 +63,8 @@ You are an expert judge evaluating the quality of a response to a given prompt. 
 {reference}
 
 Scoring Logic  
+- GOAL FULfillment(GF):
+1 (Frequent mismatches with the goal),3 (Mostly aligned, with minor inconsistencies),5 (Fully aligned with the goal) 
 - Contextual Fidelity(CF):  
 1 (Frequent inconsistencies),3 (Minor inconsistencies),5 (Deep contextual mastery)  
 - Personality Depth(PD):
@@ -72,9 +77,10 @@ Scoring Logic
 1 (Superficial/output),3 (Adequate detail),5 (Rich, layered interactions)  
 
 
-Your resposne must follow the format provided below. Please note that only when the content quality is extremely good can 5 Points be given.
+Your response must follow the format provided below. Please note that only when the content quality is extremely good can 5 Points be given.
 
 [Response Format]:
+GF: [1-5]
 CF: [1-5]  
 PD: [1-5]  
 DA: [1-5]  
@@ -1614,9 +1620,9 @@ def get_eval_edge_text_prompt(
     eval_prompts = []
     for idx, row in edge_examples_all_result.iterrows():
         eval_prompt = ACTOR_JUDGE.format(
-            prompt=row["edge_text"],
-            response=row["edge_text"],
-            reference=row["gt_text"]
+            prompt=select_to_last_period(row["edge_text"], max_length=2048),
+            response=select_to_last_period(row["edge_text"], max_length=512),
+            reference=select_to_last_period(row["gt_text"], max_length=512),
         )
         eval_prompts.append({
             "prompt": eval_prompt,
