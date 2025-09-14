@@ -104,7 +104,10 @@ def get_link_prediction_data(args):
     :return: node_raw_features, edge_raw_features, (np.ndarray),
             full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, (Data object)
     """
-    if args.data_name in ["8days_dytag_small_text_en"]:
+    if args.data_name in ["8days_dytag_small_text_en",
+                        "weibo_daily",
+                        "weibo_tech",
+                        "imdb"]:
         # train for dytag dataset
 
         import torch  
@@ -203,7 +206,10 @@ def get_edge_classification_data(args):
             full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, (Data object)
     """
      # Load data and train val test split
-    if args.data_name in ["8days_dytag_small_text_en"]:
+    if args.data_name in ["8days_dytag_small_text_en",
+                        "weibo_daily",
+                        "weibo_tech",
+                        "imdb"]:
         # train for dytag dataset
         import torch  
         bwr_ctdg = BWRCTDGALLDataset(

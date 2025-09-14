@@ -20,7 +20,6 @@ import re
 
 
 from .eval_graph_metric import evaluate_graph_metric
-from .eval_graph_metric import evaluate_graph_metric
 from ..jl_metric import JLEvaluator
 from ..GraphEmbedding_metric import GraphEmbeddingEvaluator
 
@@ -286,8 +285,13 @@ def evaluate_nodes(gt_edge_matrix,
         for i in test_src_indices:
             node_matrix = evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10)
             src_results.append(node_matrix)
-
-
+    
+    src_agg = {
+        f"{k}_node": np.mean([result[k] for result in src_results])
+        for k in src_results[0].keys()
+    }
+    
+    return src_agg
     
 
 
@@ -469,13 +473,13 @@ def evaluate_edges(
         for col in ["label_acc", "ROUGE_L", "BERTScore_F1"]:
             if col in gen_graph_df.columns:
                 edge_matrix[col] = np.mean(gen_graph_df[col])
-        print(f"edge_matrix: {edge_matrix}")
-
+        
     edge_matrix = {
         **{k: np.mean(scores_df[k]) for k in scores_df.columns},
         **edge_matrix
     }
-    
+    print(f"edge_matrix: {edge_matrix}")
+
     return edge_matrix
 
 def get_ctdg_edges(data:TemporalData, # 输入的边文件

@@ -26,13 +26,13 @@ set_inf_paths() {
 # === 主逻辑 ===
 case "$mode" in
     "process_tf")
-        echo "Mode: Process Teacher-Forcing"
+        echo "Mode: Process tdgg query"
         set_tf_paths
         python -m LLMGGen.src_edge_offline \
             --data_root "$data_root" \
             --data_name "$data_name" \
-            --time_window 86400 \
-            --bwr 1980 \
+            --time_window $time_window \
+            --bwr $bwr \
             --use_feature bert \
             --pred_ratio 0.15 \
             --split test \
@@ -42,13 +42,13 @@ case "$mode" in
             --process_query_result
         ;;
     "eval_tf")
-        echo "Mode: Evaluate Teacher-Forcing"
+        echo "Mode: Evaluate tdgg query"
         set_tf_paths
         python -m LLMGGen.ggen_eval \
             --data_root "$data_root" \
             --data_name "$data_name" \
-            --time_window 86400 \
-            --bwr 1980 \
+            --time_window $time_window \
+            --bwr $bwr \
             --use_feature bert \
             --pred_ratio 0.15 \
             --split test \
@@ -59,13 +59,13 @@ case "$mode" in
             # --edge_msg
         ;;
     "process_inf")
-        echo "Mode: Process Inference"
+        echo "Mode: Process idgg query"
         set_inf_paths
         python -m LLMGGen.src_edge_offline \
             --data_root "$data_root" \
             --data_name "$data_name" \
-            --time_window 86400 \
-            --bwr 1980 \
+            --time_window $time_window \
+            --bwr $bwr \
             --use_feature bert \
             --pred_ratio 0.15 \
             --split test \
@@ -76,13 +76,13 @@ case "$mode" in
             --process_query_result
         ;;
     "eval_inf")
-        echo "Mode: Evaluate Inference"
+        echo "Mode: Evaluate idgg query"
         set_inf_paths
         python -m LLMGGen.ggen_eval \
             --data_root "$data_root" \
             --data_name "$data_name" \
-            --time_window 86400 \
-            --bwr 1980 \
+            --time_window $time_window \
+            --bwr $bwr \
             --use_feature bert \
             --pred_ratio 0.15 \
             --split test \

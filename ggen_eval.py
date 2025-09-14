@@ -128,7 +128,7 @@ def main(args):
     
     if args.edge_report_path is not None:
         edge_df = pd.read_csv(args.edge_result_path)
-        if args.edge_text_result_path is not None:
+        if args.edge_text_result_path is not None and os.path.exists(args.edge_text_result_path):
             edge_text_df = pd.read_csv(args.edge_text_result_path)
             edge_matrix = evaluate_edges(edge_df, edge_text_df)
         else:

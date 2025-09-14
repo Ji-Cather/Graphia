@@ -63,7 +63,7 @@ The social goal for the actor is:
 {reference}
 
 Scoring Logic  
-- GOAL FULfillment(GF):
+- GOAL Fulfillment(GF):
 1 (Frequent mismatches with the goal),3 (Mostly aligned, with minor inconsistencies),5 (Fully aligned with the goal) 
 - Contextual Fidelity(CF):  
 1 (Frequent inconsistencies),3 (Minor inconsistencies),5 (Deep contextual mastery)  
@@ -121,6 +121,140 @@ def assign_difficulty(df):
     for idx, row in df.iterrows():
        
         length = row["gt_dx_src_unique"]
+        if length <= quantiles[0]:
+            difficulty = 3
+        elif length <= quantiles[1]:
+            difficulty = 2
+        else:
+            difficulty = 1
+        difficulties.append(difficulty)
+
+    df["difficulty"] = difficulties
+    return df
+
+def evaluate_retrieval(predictions, ground_truths, k_list=[10, 50, 100, None]):
+    """
+    对多标签 node retrieval 任务进行评估。
+    
+    Args:
+        predictions: list of lists. 每个元素是模型返回的排序节点列表（按相关性降序）
+                     e.g., [ ['n1','n2',...], ... ]
+        ground_truths: list of sets/lists. 每个元素是该 src 的真实 dst 集合
+                     e.g., [ {'a','b'}, {'c','d','e'} ]
+        k_list: list of int. 要评估的 top-K 值，如 [10, 50, 100]
+
+    Returns:
+        results: dict. 格式如下：
+                {
+                  'Recall@10': 0.65,
+                  'Precision@10': 0.43,
+                  'F1@10': 0.51,
+                  'HitRate@10': 0.82,
+                  'Recall@50': ...,
+                  ...
+                }
+    """
+    assert len(predictions) == len(ground_truths)
+    results = {}
+    sum_correct = 0
+    for K in k_list:
+        recalls = []
+        precisions = []
+        f1s = []
+        hit_rates = []
+
+        for pred_list, gt_set in zip(predictions, ground_truths):
+            gt_set = set(gt_set)
+             
+            # 转换类型并取前 K
+            if K is None:
+                pred_set_at_k = set(pred_list[:len(gt_set)])
+            else:
+                if len(pred_list) > K:
+                    pred_set_at_k = set(pred_list[:K])
+                else:
+                    pred_set_at_k = set(pred_list)
+            
+
+            if len(gt_set) == 0:
+                continue  # 忽略无标签样本
+
+            correct = pred_set_at_k & gt_set  # 交集
+            n_correct = len(correct)
+            n_pred = len(pred_set_at_k)
+            n_gt = len(gt_set)
+            sum_correct += n_correct
+            # Recall@K
+            recall = n_correct / n_gt if n_gt > 0 else 0
+            recalls.append(recall)
+
+            # Precision@K
+            precision = n_correct / n_pred if n_pred > 0 else 0
+            precisions.append(precision)
+
+            # F1@K
+            if precision + recall > 0:
+                f1 = 2 * precision * recall / (precision + recall)
+            else:
+                f1 = 0.0
+            f1s.append(f1)
+
+            # Hit Rate@K (至少命中一个)
+            hit_rate = 1 if n_correct > 0 else 0
+            hit_rates.append(hit_rate)
+
+        # 平均所有 query 的结果
+        results[f"Ncorrect@{K}"] = sum_correct
+        results[f'Recall@{K}'] = float(np.mean(recalls))
+        results[f'Precision@{K}'] = float(np.mean(precisions))
+        results[f'F1@{K}'] = float(np.mean(f1s))
+        results[f'HitRate@{K}'] = float(np.mean(hit_rates))
+
+    results = pd.DataFrame([results])
+    return results
+
+def preprocess_candidate_set(candidate_dst_ids, ground_truth_dst_ids):
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_candidate_ids = []
+    for id in candidate_dst_ids:
+        if id not in seen:
+            seen.add(id)
+            unique_candidate_ids.append(id)
+    
+    # Cut off to the size of ground_truth_dst_ids
+    cutoff_size = len(set(ground_truth_dst_ids))
+    if cutoff_size < len(unique_candidate_ids):
+        preprocessed_candidate_set = set(unique_candidate_ids[:cutoff_size])
+    else:
+        preprocessed_candidate_set = set(unique_candidate_ids)
+    return preprocessed_candidate_set
+
+
+def assign_difficulty_result(df, data_ctdg):
+    lengths = []
+    gt_dst_node_idxs_unique_list = []
+    for idx, row in df.iterrows():
+        src_id = int(float(row["src_idx"]))
+        output_edge_ids = np.array(data_ctdg.output_edges_dict[src_id])
+        if not isinstance(data_ctdg.get_dst_ids(output_edge_ids), torch.Tensor):
+            gt_dst_node_ids = torch.tensor(data_ctdg.get_dst_ids(output_edge_ids))
+        else:
+            gt_dst_node_ids = data_ctdg.get_dst_ids(output_edge_ids)
+        gt_dst_node_idxs_unique = gt_dst_node_ids.unique().cpu().tolist()
+        gt_dst_node_idxs_unique_list.append(gt_dst_node_idxs_unique)
+        lengths.append(len(gt_dst_node_idxs_unique ))
+
+    # Compute quantiles
+    df["gt_dst_idxs_unique"] = gt_dst_node_idxs_unique_list
+    quantiles = np.percentile(lengths, [30, 70])
+
+    # Second pass: write updated content to temp file
+    difficulties = []
+    for idx, row in df.iterrows():
+       
+        length = len(row["gt_dst_idxs_unique"])
         if length <= quantiles[0]:
             difficulty = 3
         elif length <= quantiles[1]:
@@ -260,7 +394,7 @@ def predict_edge(src_id,
 
 
 
-
+import random
 
 from typing import Iterable
 def execute_search_dst_toolkit(
@@ -269,18 +403,27 @@ def execute_search_dst_toolkit(
                            dst_node_ids: np.ndarray,
                            src_id: int,
                            bert_embedder: BertEmbedder, 
-                           environment_data: dict,
-                           data:BWRCTDGDataset,
+                           environment_info: dict,
+                           environment_data:BWRCTDGDataset,
                            interaction_cache:dict = {},
                            filter_rule = None,
                            recall_common_neighbor:bool = False,
                            recall_inductive: bool = False,
                            recall_alpha:int = 3,
-                           append_candidate_ids: list = []
+                           recall_topk:int = None # activate when set
                            ):
+    if recall_topk is None:
+        recall_number = recall_alpha*dx_src
+    else:
+        recall_number = int(recall_topk) if recall_topk > dx_src else int(dx_src)
+
     try:
-        
         query_embedding = bert_embedder.get_embedding(query_text)
+        if query_text == "":
+            return {
+            "dst_ids": random.choices(dst_node_ids, k=recall_number),
+            "dst_metrics": []
+        }
         
         if filter_rule is not None and filter_rule != "None":
             # 对目标节点进行过滤
@@ -321,9 +464,9 @@ def execute_search_dst_toolkit(
             mask = dst_node_ids != src_id
             dst_node_ids = dst_node_ids[mask]
             
-        node_features = torch.tensor(data.node_feature)
+        node_features = torch.tensor(environment_data.node_feature)
         similarities = torch.nn.functional.cosine_similarity(query_embedding, node_features[dst_node_ids])
-        top_k = min(recall_alpha*dx_src, len(similarities))
+        top_k = min(recall_number, len(similarities))
         candidate_dst_r_ids = torch.topk(similarities, k=top_k).indices
         candidate_dst_ids = dst_node_ids[candidate_dst_r_ids].tolist()
         if isinstance(candidate_dst_ids, int):
@@ -331,34 +474,33 @@ def execute_search_dst_toolkit(
 
         if recall_common_neighbor:
             n_dst_node_ids = np.array(list(interaction_cache[src_id]['neighbors']))
-            node_features = torch.tensor(data.node_feature)
-            n_similarities = torch.nn.functional.cosine_similarity(query_embedding, node_features[n_dst_node_ids])
-            n_top_k = min(recall_alpha*dx_src, len(n_similarities))
+            node_features = torch.tensor(environment_data.node_feature)
+            n_similarities = torch.nn.functional.cosine_similarity(query_embedding, 
+            node_features[n_dst_node_ids])
+            n_top_k = min(recall_number, len(n_similarities))
             candidate_dst_r_n_ids = torch.topk(n_similarities, k=n_top_k).indices
-            candidate_dst_n_ids = n_dst_node_ids[candidate_dst_r_n_ids.tolist()]
+            candidate_dst_n_ids = n_dst_node_ids[candidate_dst_r_n_ids.tolist()].tolist()
             # 保持相对顺序去重，先合并，再去重
             merged_ids = list(candidate_dst_n_ids) + list(candidate_dst_ids)
             seen = set()
             candidate_dst_ids = [x for x in merged_ids if not (x in seen or seen.add(x))]
             
         if recall_inductive:
-            ind_dst_node_ids = np.where(data.new_node_mask)[0]
-            ind_node_features = torch.tensor(data.node_feature[data.new_node_mask])
+            ind_dst_node_ids = np.where(environment_data.new_node_mask)[0]
+            ind_node_features = torch.tensor(environment_data.node_feature[environment_data.new_node_mask])
             ind_similarities = torch.nn.functional.cosine_similarity(query_embedding, ind_node_features)
-            ind_top_k = min(recall_alpha*dx_src, len(ind_similarities))
+            ind_top_k = min(recall_number, len(ind_similarities))
             ind_candidate_dst_r_ids = torch.topk(ind_similarities, k=ind_top_k).indices
-            ind_candidate_dst_ids = ind_dst_node_ids[ind_candidate_dst_r_ids.tolist()]
+            ind_candidate_dst_ids = ind_dst_node_ids[ind_candidate_dst_r_ids.tolist()].tolist()
             # 保持相对顺序去重，先合并，再去重
             merged_ids = list(ind_candidate_dst_ids) + list(candidate_dst_ids)
             seen = set()
             candidate_dst_ids = [x for x in merged_ids if not (x in seen or seen.add(x))]
-        
-        
 
         if isinstance(candidate_dst_ids, Iterable) and len(candidate_dst_ids) > top_k:
             candidate_dst_ids = candidate_dst_ids[:top_k]
         
-        candidate_dst_metrics = data.get_dst_nodes_texts(
+        candidate_dst_metrics = environment_data.get_dst_nodes_texts(
                                                 src_id,
                                                 candidate_dst_ids, 
                                                 interaction_cache = interaction_cache)
@@ -370,7 +512,7 @@ def execute_search_dst_toolkit(
         }
         
     except Exception as e:
-        return {}
+        pass
         
 def aggregate_rewards(query_reward_pairs, dx_src):
     """聚合query_reward_pairs中的rewards并采样dst nodes
@@ -659,10 +801,8 @@ def main_infer_edge(query_result_path):
 
     query_examples_all_result = pd.read_csv(query_result_path)
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
-    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
 
     os.makedirs(prompt_dir, exist_ok=True)
-    os.makedirs(result_dir, exist_ok=True)
 
     data_ctdg_loader = DataLoader(data_ctdg, 
                                 batch_size=1, 
@@ -743,30 +883,15 @@ def main_infer_dst(dx_src_path: str = None):
     sim_std = sim.std()
     
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
-    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/inference')
-   
-
+    
     os.makedirs(prompt_dir, exist_ok=True)
-    os.makedirs(result_dir, exist_ok=True)
-
+    
     data_ctdg_loader = DataLoader(data_ctdg, 
                                 batch_size=1, 
                                 shuffle=False,
                                 collate_fn=custom_collate
                                 )
     
-    query_file_name = f"query_examples.csv"
-    query_all_examples = pd.DataFrame()
-    if os.path.exists(os.path.join(result_dir, query_file_name)):
-        query_result_path = os.path.join(result_dir, query_file_name)
-        process_query_result(environment_data, 
-                             data_ctdg,
-                             False,
-                             result_path=query_result_path,
-                             interaction_cache=data_ctdg.interaction_cache,
-                             recall_common_neighbor=True,
-                             recall_inductive=False
-                             )
     
     
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
@@ -797,11 +922,13 @@ def main_infer_dst(dx_src_path: str = None):
     query_all_examples.drop(columns=[col for col in columns_to_drop if col in query_all_examples.columns], 
             inplace=True)
    
-    query_file_name = "query_examples.csv"
+    
     query_all_examples['tag'] = args.split
     query_all_examples['domain'] = 'dst_rule'
-    query_all_examples = assign_difficulty(query_all_examples)
-    
+
+    filtered_examples = query_all_examples[query_all_examples['gt_dx_src_unique'] != 0]
+    query_all_examples = assign_difficulty(filtered_examples)
+
     query_all_examples.to_csv(os.path.join(prompt_dir, 'query_examples.csv'), index=False)
 
     print(f"Query examples prompt mean length: {query_all_examples['prompt'].str.len().mean():.2f}")
@@ -934,7 +1061,7 @@ def main():
         edge_text_examples_all.shape[0], "edge_text_examples_all should be equal to the number of degree sum"
     
 
-    query_file_name = "query_examples.csv"
+
     query_all_examples['tag'] = args.split
     query_all_examples['domain'] = 'dst_rule'
     query_all_examples = assign_difficulty(query_all_examples)
@@ -956,6 +1083,10 @@ def main():
 
     # for multi domain rl
     combined_df.to_csv(os.path.join(prompt_dir, 'combined_examples.csv'), index=False)
+    if args.split == 'val' and args.data_name != "8days_dytag_small_text_en" and sub_df.shape[0] >300:
+    # 随机采样 300 条，不重复，样本数不超过总数
+        sub_df = sub_df.sample(n=300, replace=False, random_state=42)  # random_state 可选，保证可复现
+        
     sub_df.to_csv(os.path.join(prompt_dir, 'combined_easy_examples.csv'), index=False)
     
     # for single-domain rl
@@ -999,10 +1130,8 @@ def main_idgg(dx_src_path: str = None):
         raise ValueError(f"Invalid split: {args.split}")
 
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/idgg')
-    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/idgg')
    
     os.makedirs(prompt_dir, exist_ok=True)
-    os.makedirs(result_dir, exist_ok=True)
     
     data_ctdg.load_degree_predictor_results(dx_src_path)
 
@@ -1012,18 +1141,7 @@ def main_idgg(dx_src_path: str = None):
                                 collate_fn=custom_collate
                                 )
     
-    query_file_name = f"query_examples.csv"
-    query_all_examples = pd.DataFrame()
-    if os.path.exists(os.path.join(result_dir, query_file_name)):
-        query_result_path = os.path.join(result_dir, query_file_name)
-        process_query_result(environment_data, 
-                             data_ctdg,
-                             True,
-                             result_path=query_result_path,
-                             interaction_cache=data_ctdg.interaction_cache,
-                             recall_common_neighbor=True,
-                             recall_inductive=False
-                             )
+    
         
         
     
@@ -1034,7 +1152,6 @@ def main_idgg(dx_src_path: str = None):
         dx_src_all_batch_gt = np.sum(batch_data['src_node_degree'], axis = -1)
         dx_src_all_batch = np.sum(batch_data['src_model_pred_degree'], axis = -1)
         non_zero_indices = np.where(dx_src_all_batch_gt>0)
-        dst_node_ids = np.arange(environment_data['dst_min'], environment_data['dst_max'] + 1)
     
         for batch_inter_idx, bwr_idx in zip(non_zero_indices[0], 
                                                     non_zero_indices[1]):
@@ -1094,10 +1211,13 @@ def main_idgg(dx_src_path: str = None):
             inplace=True)
 
 
-    query_file_name = "query_examples.csv"
     query_all_examples['tag'] = args.split
     query_all_examples['domain'] = 'dst_rule'
-    query_all_examples = assign_difficulty(query_all_examples)
+    # Step 1: 过滤掉 "gt_dx_src_unique" == 0 的行
+    filtered_examples = query_all_examples[query_all_examples['gt_dx_src_unique'] != 0]
+
+    # Step 2: 在过滤后的数据上应用 assign_difficulty 函数
+    query_all_examples = assign_difficulty(filtered_examples)
     
     edge_text_examples_all['tag'] = args.split
     edge_text_examples_all['domain'] = 'edge_rule'
@@ -1116,6 +1236,10 @@ def main_idgg(dx_src_path: str = None):
 
     # for multi domain rl
     combined_df.to_csv(os.path.join(prompt_dir, 'combined_examples.csv'), index=False)
+    
+    if args.split == 'val' and args.data_name != "8days_dytag_small_text_en" and sub_df.shape[0] >300:
+    # 随机采样 300 条，不重复，样本数不超过总数
+        sub_df = sub_df.sample(n=300, replace=False, random_state=42)  # random_state 可选，保证可复现
     sub_df.to_csv(os.path.join(prompt_dir, 'combined_easy_examples.csv'), index=False)
     
     # for single-domain rl
@@ -1149,10 +1273,9 @@ def main_inference_offline_cold_start():
         raise ValueError(f"Invalid split for cold start: {args.split}")
     
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/cold_start')
-    result_dir = os.path.join(args.save_root,f'results/{args.model_config_name}/{args.data_name}/{args.split}/cold_start')
-
+    
     os.makedirs(prompt_dir, exist_ok=True)
-    os.makedirs(result_dir, exist_ok=True)
+
     
     environment_data = {
             'dst_min': bwr_ctdg.dst_min,
@@ -1175,7 +1298,7 @@ def main_inference_offline_cold_start():
     query_positive_examples_all = pd.DataFrame()   
     edge_text_examples_all = pd.DataFrame()
 
-    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
+    bert_embedder = BertEmbedder()
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
     "predicting edges"):
         ## 训练过程 teacher forcing 
@@ -1367,6 +1490,266 @@ class EdgeReward:
             model_type=self.model_type)    
     
     
+# def process_query_result(
+#                  teacher_forcing:bool,
+#                  args,
+#                  gen_col:str = "generate_results",
+#                  recall_common_neighbor: bool = True,
+#                  recall_inductive: bool = False,
+#                  ):
+    
+
+#     query_examples_all_result = pd.read_csv(args.query_save_path)
+#     assert gen_col in query_examples_all_result.columns and "src_idx" in query_examples_all_result.columns, f"gen_col {gen_col} not in query_examples_all_result"
+#     bwr_ctdg = BWRCTDGALLDataset(
+#         pred_ratio=args.pred_ratio,
+#         bwr=args.bwr,
+#         time_window=args.time_window,
+#         root=os.path.join(args.data_root,args.data_name),
+#         use_feature=args.use_feature,
+#         cm_order=args.cm_order,
+#         # force_reload=True
+#     )
+    
+#     environment_data = {
+#             'dst_min': bwr_ctdg.dst_min,
+#             'dst_max': bwr_ctdg.dst_max,
+#             'bwr': bwr_ctdg.bwr,
+#             'data_name': bwr_ctdg.data_name,
+#             "description":Dataset_Template[bwr_ctdg.data_name]['description']
+#         }
+    
+#     # 假设not teacher forcing，这边要加入degree predictor结果的load    
+#     if args.split == 'train':
+#         data_ctdg = bwr_ctdg.train_data
+#     elif args.split == 'val':
+#         data_ctdg = bwr_ctdg.val_data
+#     elif args.split == 'test':
+#         data_ctdg = bwr_ctdg.test_data
+#     else:
+#         raise ValueError(f"Invalid split: {args.split}")
+    
+#     if not teacher_forcing:
+#         data_ctdg.load_degree_predictor_results(args.dx_src_path)
+
+    
+#     bert_embedder = BertEmbedder()
+#     query_parser = RegexTaggedContentParser(
+#         required_keys=Dataset_Template[environment_data['data_name']]['node_text_cols'],
+#     )
+    
+    
+#     identifier_map = {}
+#     data_ctdg_loader = DataLoader(data_ctdg, 
+#                             batch_size=1, 
+#                             shuffle=False,
+#                             collate_fn=custom_collate
+#                             )
+#     dst_node_ids = np.arange(environment_data['dst_min'], environment_data['dst_max'] + 1)
+#     for batch_idx, batch_data in enumerate(data_ctdg_loader):
+#         if teacher_forcing:
+#             batch_data["src_model_pred_degree"] = batch_data["src_node_degree"]    
+
+#         dx_src_all_batch = np.sum(batch_data['src_model_pred_degree'], axis = -1)
+#         non_zero_indices = np.where(dx_src_all_batch>0)
+        
+#         for batch_inter_idx, bwr_idx in zip(non_zero_indices[0], 
+#                                             non_zero_indices[1]):
+#             src_id = batch_data['src_node_ids'][batch_inter_idx][bwr_idx]
+#             pred_ids = np.where(batch_data['src_node_degree'][batch_inter_idx][bwr_idx]>0)[0]
+#             identifier_map[src_id] = {       
+#                 "dx_src_list": batch_data['src_model_pred_degree'][batch_inter_idx][bwr_idx].tolist(),
+#                 "dst_node_ids": dst_node_ids,
+#                 "pred_ids": pred_ids.tolist()
+#             }
+    
+    
+#     parsed_results = []
+#     for idx, row in query_examples_all_result.iterrows():
+#         try:
+#             parsed_results.append({
+#                 "parsed": query_parser.parse(ModelResponse(row[gen_col])).parsed,
+#                 "success": True
+#             } )
+#         except Exception as e:
+#             parsed_results.append({
+#                 "parsed": None,
+#                 "success": False
+#             })
+            
+#     fail_count = sum(1 for result in parsed_results if not result["success"])
+#     print(f"解析失败的数量: {fail_count}")
+
+#     query_examples_all_result["success"] = [result["success"] for result in parsed_results]
+#     for col in Dataset_Template[environment_data['data_name']]['node_text_cols']:
+#         query_examples_all_result[col] = [result["parsed"].get(col, None) if result["success"] else None for result in parsed_results]
+    
+    
+#     rewarder = DstReward(args)
+#     query_edges_src_all = []
+    
+#     cols_text = Dataset_Template[environment_data['data_name']]['node_text_cols']
+#     grouped_df = query_examples_all_result.groupby('src_idx')
+    
+#     # 先分配 difficulty 列
+#     query_examples_all_result = assign_difficulty_result(query_examples_all_result,
+#                                                          data_ctdg)
+#     # 获取 hub src node（difficulty < 3）的 src_idx 列表
+#     hub_src_ids = query_examples_all_result[query_examples_all_result["difficulty"] < 3]["src_idx"].unique().tolist()
+    
+#     retrival_can_dst_list = [] 
+#     retrival_gt_dst_list = [] 
+#     hub_mask = []
+
+#     for src_id, group in tqdm(grouped_df, "processing query examples"):
+#         src_id = int(float(src_id))
+#         candidate_dst_ids_all = []
+        
+#         for _, row in group.iterrows():
+            
+#             dx_src_list = identifier_map[src_id]["dx_src_list"]
+#             dst_node_ids = identifier_map[src_id]["dst_node_ids"]
+#             if row["success"]:
+#                 query_text = Dataset_Template[environment_data['data_name']]['node_text_template'].format_map(row[cols_text].to_dict())
+#                 filter_rule = row.get("filter_rule")
+#             else:
+#                 # query_text = data_ctdg.node_text[src_id]
+#                 query_text = ""
+#                 filter_rule = None
+                
+#             # candidate_dst_ids = execute_search_dst_toolkit(query_text,
+#             #                                                     np.sum(dx_src_list),
+#             #                                                     dst_node_ids,
+#             #                                                     src_id,
+#             #                                                     bert_embedder,
+#             #                                                     environment_data,
+#             #                                                     data_ctdg,
+#             #                                                     data_ctdg.interaction_cache,
+#             #                                                     filter_rule,
+#             #                                                     recall_common_neighbor=recall_common_neighbor,
+#             #                                                     recall_inductive=recall_inductive,
+#             #                                                     recall_alpha=3
+#             #                                                 )
+            
+#             query_edges = pd.DataFrame(columns=["src_idx", "dst_idx", "t"])
+#             for pred_idx in identifier_map[src_id]["pred_ids"]:
+#                 if dx_src_list[pred_idx] == 0:
+#                     print(f"Warning: src_id {src_id} pred_idx {pred_idx} has 0 degree, skipping.")
+#                 candidate_dst_ids = execute_search_dst_toolkit(query_text,
+#                                                                     np.sum(dx_src_list),
+#                                                                     dst_node_ids,
+#                                                                     src_id,
+#                                                                     bert_embedder,
+#                                                                     environment_data,
+#                                                                     data_ctdg,
+#                                                                     data_ctdg.interaction_cache,
+#                                                                     filter_rule,
+#                                                                     recall_common_neighbor=recall_common_neighbor,
+#                                                                     # recall_inductive=recall_inductive,
+#                                                                     recall_topk=100
+#                                                                     # recall_alpha=3
+#                                                                 )
+#                 t = data_ctdg.unique_times[data_ctdg.input_len + int(pred_idx)]
+#                 times = [t] * int(dx_src_list[pred_idx])
+
+#                 ## get candidate dst ids (candidate len)
+#                 gt_dst_idxs_unique = row["gt_dst_idxs_unique"]
+#                 for dst_id, t in zip(candidate_dst_ids["dst_ids"][:dx_src_list[pred_idx]], times):
+#                     query_edges.loc[len(query_edges)] = {
+#                         "src_idx": src_id,
+#                         "dst_idx": dst_id,
+#                         "t": int(t)
+#                     }
+                
+#                 retrival_can_dst_list.append(candidate_dst_ids["dst_ids"])
+#                 retrival_gt_dst_list.append(gt_dst_idxs_unique)
+#                 hub_mask.append(1 if src_id in hub_src_ids else 0)
+
+#             # preprocess
+#             # candidate_dst_ids["gt_dst_idxs_unique"] = preprocess_candidate_set(
+#             #                                                 candidate_dst_ids["dst_ids"],
+#             #                                                 gt_dst_idxs_unique)
+
+#             ## get choosen dst ids (degree len)
+#             # candidate_dst_ids["dst_ids"] = candidate_dst_ids["dst_ids"][:np.sum(dx_src_list)]
+#             # 为每个 pred_idx 分配对应的时间，并根据 dx_src_list[pred_idx] 的数量重复该时间
+#             # times = []
+#             # for pred_idx in identifier_map[row["src_idx"]]["pred_ids"]:
+#             #     t = data_ctdg.unique_times[data_ctdg.input_len + int(pred_idx)]
+#             #     times.extend([t] * int(dx_src_list[pred_idx]))
+                
+            
+#             # for dst_id, t in zip(candidate_dst_ids["dst_ids"][:np.sum(dx_src_list)], times):
+#             #     query_edges.loc[len(query_edges)] = {
+#             #         "src_idx": src_id,
+#             #         "dst_idx": dst_id,
+#             #         "t": int(t)
+#             #     }
+            
+#             score = rewarder.reward(query_edges["src_idx"].values,
+#                                     query_edges["dst_idx"].values,
+#                                     query_edges["t"].values)
+            
+#             candidate_dst_ids_all.append((query_edges,score,candidate_dst_ids["dst_ids"], gt_dst_idxs_unique))
+        
+#         # score candidates
+#         # 按照score对candidate_dst_ids_all进行排序，由高到低
+#         candidate_dst_ids_all.sort(key=lambda x: x[1], reverse=True)
+#         query_edges_src_all.append(candidate_dst_ids_all[0][0])
+        
+#         ## eval candidate recall acccuracy
+#         # best_can_dst_ids = candidate_dst_ids_all[0][2]
+#         # best_gt_dst_idxs_unique = candidate_dst_ids_all[0][3]
+#         # retrival_can_dst_list.append(best_can_dst_ids)
+#         # retrival_gt_dst_list.append(best_gt_dst_idxs_unique)
+#         # hub_mask.append(1 if src_id in hub_src_ids else 0)
+        
+#         ### test time scaling: prove to be not effective
+#         # # 将 candidate_dst_ids_all 的 query_edges concat 并且按照频率从高到低排序，选择 iloc[:dx_src] 的边
+#         # # 1. 合并所有 query_edges
+#         # all_edges = pd.concat([item[0] for item in candidate_dst_ids_all], ignore_index=True)
+#         # # 2. 统计每个 (src_idx, dst_idx, t) 的出现次数
+#         # edge_counts = all_edges.value_counts(subset=["src_idx", "dst_idx", "t"]).reset_index(name="count")
+#         # # 3. 按照频率从高到低排序
+#         # edge_counts = edge_counts.sort_values("count", ascending=False)
+#         # # 4. 选择 iloc[:dx_src] 的边
+#         # dx_src = int(np.sum(identifier_map[src_id]["dx_src_list"]))
+#         # selected_edges = edge_counts.iloc[:dx_src][["src_idx", "dst_idx", "t"]].copy()
+#         # # 5. 添加到 query_edges_src_all
+#         # query_edges_src_all.append(selected_edges)
+        
+#     # 从 query_result_path 中提取 model_config_name
+#     match = re.search(r'LLMGGen/results/(.*?)/', args.query_result_path)
+#     model_config_name = match.group(1)
+
+#     # 统计所有检索结果
+#     retrival_df = evaluate_retrieval(predictions=retrival_can_dst_list,
+#                                      ground_truths=retrival_gt_dst_list,
+#                                      k_list=[1, 3, 10, 50, 100, None]
+#                                      )
+#     retrival_df["model"] = model_config_name
+
+#     # 针对 hub_src == True 的 index 单独计算
+#     hub_indices = [i for i, is_hub in enumerate(hub_mask) if is_hub == 1]
+#     hub_retrival_can_dst_list = [retrival_can_dst_list[i] for i in hub_indices]
+#     hub_retrival_gt_dst_list = [retrival_gt_dst_list[i] for i in hub_indices]
+#     hub_retrival_df = evaluate_retrieval(predictions=hub_retrival_can_dst_list,
+#                                          ground_truths=hub_retrival_gt_dst_list,
+#                                          k_list=[1, 3, 10, 50, 100, None])
+#     hub_retrival_df["model"] = model_config_name
+    
+
+#     # 保存结果
+#     result_dir = os.path.dirname(args.query_result_path)
+#     retrival_df.to_csv(os.path.join(result_dir, "dst_retrival.csv"), index=False)
+#     hub_retrival_df.to_csv(os.path.join(result_dir, "hub_src_dst_retrival.csv"), index=False)
+
+#     query_edges_src_all = pd.concat(query_edges_src_all, ignore_index=True) # 含有src,dst,t, edge_id 四列
+#     # 直接使用 np.arange 设置 edge_id 列
+#     query_edges_src_all["edge_id"] = np.arange(len(query_edges_src_all))
+#     query_edges_src_all.to_csv(args.query_result_path, index=False)
+
+
 def process_query_result(
                  teacher_forcing:bool,
                  args,
@@ -1410,35 +1793,13 @@ def process_query_result(
         data_ctdg.load_degree_predictor_results(args.dx_src_path)
 
     
-    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
+    bert_embedder = BertEmbedder()
     query_parser = RegexTaggedContentParser(
         required_keys=Dataset_Template[environment_data['data_name']]['node_text_cols'],
     )
     
     
-    identifier_map = {}
-    data_ctdg_loader = DataLoader(data_ctdg, 
-                            batch_size=1, 
-                            shuffle=False,
-                            collate_fn=custom_collate
-                            )
     dst_node_ids = np.arange(environment_data['dst_min'], environment_data['dst_max'] + 1)
-    for batch_idx, batch_data in enumerate(data_ctdg_loader):
-        if teacher_forcing:
-            batch_data["src_model_pred_degree"] = batch_data["src_node_degree"]    
-
-        dx_src_all_batch = np.sum(batch_data['src_model_pred_degree'], axis = -1)
-        non_zero_indices = np.where(dx_src_all_batch>0)
-        
-        for batch_inter_idx, bwr_idx in zip(non_zero_indices[0], 
-                                            non_zero_indices[1]):
-            src_id = batch_data['src_node_ids'][batch_inter_idx][bwr_idx]
-            pred_ids = np.where(batch_data['src_node_degree'][batch_inter_idx][bwr_idx]>0)[0]
-            identifier_map[src_id] = {       
-                "dx_src_list": batch_data['src_model_pred_degree'][batch_inter_idx][bwr_idx].tolist(),
-                "dst_node_ids": dst_node_ids,
-                "pred_ids": pred_ids.tolist()
-            }
     
     
     parsed_results = []
@@ -1462,84 +1823,99 @@ def process_query_result(
         query_examples_all_result[col] = [result["parsed"].get(col, None) if result["success"] else None for result in parsed_results]
     
     
-    rewarder = DstReward(args)
-    query_edges_src_all = []
-    
+
+    query_examples_all_result = assign_difficulty(query_examples_all_result)
     cols_text = Dataset_Template[environment_data['data_name']]['node_text_cols']
-    grouped_df = query_examples_all_result.groupby('src_idx')
-    for src_id, group in tqdm(grouped_df, "processing query examples"):
-        src_id = int(float(src_id))
-        candidate_dst_ids_all = []
+
+    dst_node_ids = np.arange(environment_data['dst_min'], 
+                             environment_data['dst_max'] + 1)
+    # 初始化存储结构
+    results_list = []
+    for idx, row in query_examples_all_result.iterrows():
+        src_idx = int(float(row["src_idx"]))
+        dx_src, gt_dst_idxs = row["gt_dx_src_unique"], row["gt_dst_idxs_unique"]
+        gt_dst_idxs = set(eval(gt_dst_idxs))
+        is_hub = row["difficulty"] < 3
+        result = {
+        'src_idx': src_idx,
+        'is_hub': is_hub
+    }
+        if row["success"]:
+            query_text = Dataset_Template[environment_data['data_name']]['node_text_template'].format_map(row[cols_text].to_dict())
+            filter_rule = row.get("filter_rule")
+        else:
+            # query_text = data_ctdg.node_text[src_id]
+            for k in [10, 50, 100]:
+                result[f'recall@{k}'] = 0.0
+                result[f'hit@{k}'] = 0
+            continue
         
-        for _, row in group.iterrows():
-            
-            dx_src_list = identifier_map[src_id]["dx_src_list"]
-            dst_node_ids = identifier_map[src_id]["dst_node_ids"]
-            if row["success"]:
-                query_text = Dataset_Template[environment_data['data_name']]['node_text_template'].format_map(row[cols_text].to_dict())
-                filter_rule = row.get("filter_rule")
-            else:
-                query_text = data_ctdg.node_text[src_id]
-                filter_rule = None
-                
+        for k in [10, 50, 100]:
             candidate_dst_ids = execute_search_dst_toolkit(query_text,
-                                                                np.sum(dx_src_list),
-                                                                dst_node_ids,
-                                                                src_id,
-                                                                bert_embedder,
-                                                                environment_data,
-                                                                data_ctdg,
-                                                                data_ctdg.interaction_cache,
-                                                                filter_rule,
-                                                                recall_common_neighbor=recall_common_neighbor,
-                                                                recall_inductive=recall_inductive,
-                                                                recall_alpha=3
-                                                            )
-            candidate_dst_ids["dst_ids"] = candidate_dst_ids["dst_ids"][:np.sum(dx_src_list)]
-            # 为每个 pred_idx 分配对应的时间，并根据 dx_src_list[pred_idx] 的数量重复该时间
-            times = []
-            for pred_idx in identifier_map[row["src_idx"]]["pred_ids"]:
-                t = data_ctdg.unique_times[data_ctdg.input_len + int(pred_idx)]
-                times.extend([t] * int(dx_src_list[pred_idx]))
-                
-            query_edges = pd.DataFrame(columns=["src_idx", "dst_idx", "t"])
-            for dst_id, t in zip(candidate_dst_ids["dst_ids"], times):
-                query_edges.loc[len(query_edges)] = {
-                    "src_idx": src_id,
-                    "dst_idx": dst_id,
-                    "t": int(t)
-                }
-            
-            score = rewarder.reward(query_edges["src_idx"].values,
-                                    query_edges["dst_idx"].values,
-                                    query_edges["t"].values)
-            
-            candidate_dst_ids_all.append((query_edges,score))
-        
-        # score candidates
-        # 按照score对candidate_dst_ids_all进行排序，由高到低
-        candidate_dst_ids_all.sort(key=lambda x: x[1], reverse=True)
-        query_edges_src_all.append(candidate_dst_ids_all[0][0])
-        
-        # # 将 candidate_dst_ids_all 的 query_edges concat 并且按照频率从高到低排序，选择 iloc[:dx_src] 的边
-        # # 1. 合并所有 query_edges
-        # all_edges = pd.concat([item[0] for item in candidate_dst_ids_all], ignore_index=True)
-        # # 2. 统计每个 (src_idx, dst_idx, t) 的出现次数
-        # edge_counts = all_edges.value_counts(subset=["src_idx", "dst_idx", "t"]).reset_index(name="count")
-        # # 3. 按照频率从高到低排序
-        # edge_counts = edge_counts.sort_values("count", ascending=False)
-        # # 4. 选择 iloc[:dx_src] 的边
-        # dx_src = int(np.sum(identifier_map[src_id]["dx_src_list"]))
-        # selected_edges = edge_counts.iloc[:dx_src][["src_idx", "dst_idx", "t"]].copy()
-        # # 5. 添加到 query_edges_src_all
-        # query_edges_src_all.append(selected_edges)
-        
-    query_edges_src_all = pd.concat(query_edges_src_all, ignore_index=True) # 含有src,dst,t, edge_id 四列
-    # 直接使用 np.arange 设置 edge_id 列
-    query_edges_src_all["edge_id"] = np.arange(len(query_edges_src_all))
-    query_edges_src_all.to_csv(args.query_result_path, index=False)
- 
-        
+                                                            dx_src, 
+                                                            dst_node_ids,
+                                                            src_idx,
+                                                            bert_embedder,
+                                                            environment_data,
+                                                            data_ctdg,
+                                                            data_ctdg.interaction_cache,
+                                                            filter_rule,
+                                                            recall_common_neighbor=recall_common_neighbor,
+                                                            # recall_inductive=recall_inductive,
+                                                            recall_topk=k
+                                                            # recall_alpha=3
+                                                        )
+    
+            pred_set = set(candidate_dst_ids["dst_ids"])
+            inter = pred_set & gt_dst_idxs
+            recall = len(inter) / len(gt_dst_idxs) if gt_dst_idxs else 0.0
+            hit = int(len(inter) > 0)
+
+            result[f'recall@{k}'] = recall
+            result[f'hit@{k}'] = hit
+        # 添加到总列表
+        results_list.append(result)
+
+    df_results = pd.DataFrame(results_list)
+    groups = {
+        'Hub': df_results['is_hub'],
+        'Normal': ~df_results['is_hub'],
+        'All': pd.Series([True] * len(df_results))  # 全部样本
+    }
+
+    # 所有要统计的指标和 topk
+    metrics = ['recall', 'hit']
+    ks = [10, 50, 100]
+
+    # 构建结果字典
+    summary_data = {}
+
+    for group_name, mask in groups.items():
+        group_data = {}
+        for metric in metrics:
+            for k in ks:
+                col = f"{metric}@{k}"
+                values = df_results[mask][col]
+                group_data[col] = values.mean() if len(values) > 0 else 0.0
+        summary_data[group_name] = group_data
+
+    # 转为 DataFrame，并排序列：Recall@10, Recall@50, ..., Hit@10, ...
+    df_summary = pd.DataFrame(summary_data).T  # 转置：group 为行
+    df_summary = df_summary.round(4)
+
+    # 可选：按列名排序（Recall 在前，Hit 在后，按 k 排序）
+    sorted_cols = sorted(df_summary.columns, key=lambda x: (x.split('@')[0], int(x.split('@')[1])))
+    df_summary = df_summary[sorted_cols]
+
+    # 设置索引名
+    df_summary.index.name = 'Group'
+    result_dir = os.path.dirname(args.query_result_path)
+    df_summary.to_csv(os.path.join(result_dir, "dst_retrival.csv"))
+
+
+
+
+
 def execute_search_edge_label_toolkit(
                            edge_label_text: str,
                            src_id: int,
@@ -1616,13 +1992,15 @@ def execute_search_edge_label_toolkit(
         
 def get_eval_edge_text_prompt(
         edge_examples_all_result:pd.DataFrame,
+        dataset_name
     ):
     eval_prompts = []
     for idx, row in edge_examples_all_result.iterrows():
         eval_prompt = ACTOR_JUDGE.format(
-            prompt=select_to_last_period(row["edge_text"], max_length=2048),
-            response=select_to_last_period(row["edge_text"], max_length=512),
-            reference=select_to_last_period(row["gt_text"], max_length=512),
+            goal = Dataset_Template[dataset_name]["goal"],
+            prompt=select_to_last_period(row["prompt"], upper_token=2048),
+            response=select_to_last_period(row["edge_text"], upper_token=512),
+            reference=select_to_last_period(row["gt_text"], upper_token=512),
         )
         eval_prompts.append({
             "prompt": eval_prompt,
@@ -1665,7 +2043,7 @@ def process_edge_result(args,
     else:
         raise ValueError(f"Invalid split: {args.split}")
     
-    bert_embedder = BertEmbedder("/data/oss_bucket_0/jjr/hf_cache/bert-tiny/")
+    bert_embedder = BertEmbedder()
     edge_parser = RegexTaggedContentParser(
         required_keys=Dataset_Template[environment_data['data_name']]['edge_text_cols'],
     )
@@ -1760,7 +2138,7 @@ def process_edge_result(args,
             
             row["edge_label"] = candidate_edge_labels["label"]
             row["edge_text"] = Dataset_Template[environment_data['data_name']]['edge_text_template'].format_map(row.to_dict())
-            row = row[["src_idx", "dst_idx", "t", "edge_id", "edge_label", "edge_text", "gt_label", "gt_text"]]
+            row = row[["src_idx", "dst_idx", "t", "prompt", "edge_id", "edge_label", "edge_text", "gt_label", "gt_text"]]
 
            
             score = rewarder.reward(np.array([row["src_idx"]]),
@@ -1775,8 +2153,9 @@ def process_edge_result(args,
     
     
     edges_all = pd.concat(edges_all,ignore_index=True) # 含有src,dst,t,edge_id,edge_label,edge_text
-    eval_prompts = get_eval_edge_text_prompt(edges_all)
-    prompt_dir = os.path.dirname(args.edge_save_path)
+    eval_prompts = get_eval_edge_text_prompt(edges_all, dataset_name=bwr_ctdg.data_name)
+    prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
+    os.makedirs(prompt_dir, exist_ok=True)
     eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
     edges_all.to_csv(args.edge_result_path, index=False)
     
@@ -1794,6 +2173,7 @@ if __name__ == "__main__":
     import argparse
     import os
     from datetime import datetime
+    import re
 
     parser = argparse.ArgumentParser()
 

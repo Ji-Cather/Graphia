@@ -107,6 +107,13 @@ Dataset_Template = {
 <characters_a>{characters_a}</characters_a>
 <characters_b>{characters_b}</characters_b>""",
         "edge_text_cols": ["ts_str", "primary_title", "label", "characters_a", "characters_b"],
+        "edge_text_hint":{
+            "ts_str": "The year of cooperation",
+            "primary_title": "The title of the cooperation movie",
+            "label": """The genre of the cooperation movie (TWENTY TYPES: 1.Drama, 2.Crime, 3.Comedy, 4.War, 5.Biography, 6.Romance, 7.Action, 8.Adventure, 9.Western, 10,Horror, 11.Thriller, 12,Mystery, 13.Fantasy, 14.History, 15.Family, 16.Sci-Fi, 17.Documentary, 18.Musical, 19.Animation, 20.Adult)""",
+            "characters_a": "The character you play in the cooperation movie",
+            "characters_b": "The character the movie-cooperator plays in the cooperation movie",
+        },
         "node_text_template": """
 <actor_name>{actor_name}</actor_name>
 <birth_year>{birth_year}</birth_year>
@@ -131,6 +138,12 @@ Dataset_Template = {
 <src_text>{src_text}</src_text>
 <dst_text>{dst_text}</dst_text>""",
         "edge_text_cols": ["ts_str", "label", "src_text", "dst_text"],
+        "edge_text_hint": {
+            "label": "Main category of the product",
+            "ts_str": "Interaction time",
+            "src_text": "Src user text",
+            "dst_text": "Dst user text"
+        },
         "node_text_template": """
 <user_name>{user_name}</user_name>
 <user_source>{user_source}</user_source>
@@ -683,8 +696,8 @@ class BWRCTDGDataset:
     def load_degree_predictor_results(self,
                                       degree_result_path:str):
         degree_result = torch.load(degree_result_path)
-        self.pred_src_dx = degree_result['degree'].int().numpy()
-        # self.pred_src_unique_dx = degree_result['unique_degree'].int()
+        self.pred_src_dx = degree_result['degree'].round().int().numpy()
+        # self.pred_src_unique_dx = degree_result['unique_degree'].round().int().numpy()
     
     
     

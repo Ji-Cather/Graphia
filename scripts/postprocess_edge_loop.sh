@@ -6,8 +6,8 @@ edge_text_result_path=${llm_save_root}/${data_name}/test/teacher_forcing/edge_te
 edge_report_path=${report_save_root}/${data_name}/test/teacher_forcing/edge_matrix.csv
 
 
-if [ "$mode" == "process" ]; then
-    echo "Mode is 'process'. Performing processing tasks..."
+if [ "$mode" == "process_tf" ]; then
+    echo "Mode is 'process tdgg edge'. Performing processing tasks..."
     python -m LLMGGen.src_edge_offline \
         --data_root $data_root \
         --data_name $data_name \
@@ -20,7 +20,7 @@ if [ "$mode" == "process" ]; then
         --process_edge_result \
         
 else
-    echo "Mode is 'eval'. Performing eval tasks..."
+    echo "Mode is 'eval tdgg edge'. Performing eval tasks..."
     python -m LLMGGen.ggen_eval \
         --data_root $data_root \
         --data_name $data_name \
@@ -30,7 +30,7 @@ else
         --cm_order True \
         --edge_result_path ${edge_result_path} \
         --edge_report_path ${edge_report_path} \
-        --edge_text_result_path ${edge_text_result_path}
+        # --edge_text_result_path ${edge_text_result_path}
         # --node_msg \
         # --edge_msg \
 fi

@@ -1,0 +1,17 @@
+{
+    "test metrics": {
+        "total_loss": "0.03343978896737099",
+        "total_loss_allbatches_degree": "0.016719896346330643",
+        "total_loss_allbatches_unique": "0.016719896346330643",
+        "mae_allbatches_degree": "0.05035262182354927",
+        "mse_allbatches_degree": "0.0960470512509346",
+        "mae_allbatches_unique": "0.03986794129014015",
+        "mse_allbatches_unique": "0.055090174078941345",
+        "histogram_wasserstein_distance_degree": "0.038625506224879674",
+        "histogram_kl_divergence_degree": "22.50637805169514",
+        "histogram_mmd_distance_degree": "0.0003452669770922512",
+        "histogram_wasserstein_distance_unique": "0.038625506224879674",
+        "histogram_kl_divergence_unique": "22.50637805169514",
+        "histogram_mmd_distance_unique": "0.0003452669770922512"
+    }
+}

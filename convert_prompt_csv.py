@@ -223,7 +223,7 @@ def convert_jsonl_to_csv(root_dir, output_dir):
                     else:
                         print(f"Warning: 'id' column not found in {root}, using default index")
                     
-                    for col in ["gt_label","output"]:
+                    for col in ["gt_label","output","gt_dst_idxs_unique","gt_dx_src_unique"]:
                         if col in merged_df.columns:
                             cols_save.append(col)
                     try:
@@ -233,7 +233,7 @@ def convert_jsonl_to_csv(root_dir, output_dir):
                     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
                     # Write to JSONL (each row is a JSON object on a new line)
                     print(f"Merged {len(jsonl_files)} files into {csv_path}")
-                    merged_df.to_csv(csv_path, index=True)
+                    merged_df.to_csv(csv_path, index=True, escapechar='\\')
 
 
 if __name__ == "__main__":
