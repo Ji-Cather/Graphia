@@ -72,6 +72,44 @@ def get_retrival_metrics(pos_scores: torch.Tensor, neg_scores: torch.Tensor):
     return {'H1': np.mean(H1), 'H3': np.mean(H3), 'H10': np.mean(H10)}
 
 
+# def get_retrival_metrics(pos_scores: torch.Tensor, neg_scores: torch.Tensor):
+#     """
+#     get metrics for the link prediction task
+#     :param pos_scores: Tensor, shape (num_samples, )
+#     :param neg_scores: Tensor, shape (neg_size, num_samples)
+#     :return:
+#         dictionary of metrics {'metric_name_1': metric_1, ...}
+#     """
+#     try:
+#         pos_scores = pos_scores.cpu().detach().numpy()
+#     except:
+#         pass
+#     try:
+#         neg_scores = np.array([sub_score.cpu().numpy() for sub_score in neg_scores]).T # num_samples * neg_size
+#     except:
+#         neg_scores = np.array([sub_score for sub_score in neg_scores]).T # num_samples * neg_size
+
+#     H10, H50, H100 = [], [], []
+#     for i in range(len(pos_scores)):
+#         rank = get_rank(pos_scores[i], neg_scores[i])
+#         if rank <= 10:
+#             H10.append(1)
+#         else:
+#             H10.append(0)
+        
+#         if rank <= 3:
+#             H50.append(1)
+#         else:
+#             H50.append(0)
+
+#         if rank <= 10:
+#             H100.append(1)
+#         else:
+#             H100.append(0)
+
+#     return {'H10': np.mean(H10), 'H50': np.mean(H50), 'H100': np.mean(H100)}
+
+
 def get_node_classification_metrics(predicts: torch.Tensor, labels: torch.Tensor):
     """
     get metrics for the node classification task

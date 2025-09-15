@@ -30,7 +30,7 @@ else
         --cm_order True \
         --edge_result_path ${edge_result_path} \
         --edge_report_path ${edge_report_path} \
-        # --edge_text_result_path ${edge_text_result_path}
+        --edge_text_result_path ${edge_text_result_path}
         # --node_msg \
         # --edge_msg \
 fi

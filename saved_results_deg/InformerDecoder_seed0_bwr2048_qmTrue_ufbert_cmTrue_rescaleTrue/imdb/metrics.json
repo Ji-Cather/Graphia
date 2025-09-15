@@ -1,17 +1,17 @@
 {
     "test metrics": {
-        "total_loss": "0.03343978896737099",
-        "total_loss_allbatches_degree": "0.016719896346330643",
-        "total_loss_allbatches_unique": "0.016719896346330643",
-        "mae_allbatches_degree": "0.05035262182354927",
-        "mse_allbatches_degree": "0.0960470512509346",
-        "mae_allbatches_unique": "0.03986794129014015",
-        "mse_allbatches_unique": "0.055090174078941345",
-        "histogram_wasserstein_distance_degree": "0.038625506224879674",
-        "histogram_kl_divergence_degree": "22.50637805169514",
-        "histogram_mmd_distance_degree": "0.0003452669770922512",
-        "histogram_wasserstein_distance_unique": "0.038625506224879674",
-        "histogram_kl_divergence_unique": "22.50637805169514",
-        "histogram_mmd_distance_unique": "0.0003452669770922512"
+        "total_loss": "0.17217659950256348",
+        "total_loss_allbatches_degree": "0.08608830720186234",
+        "total_loss_allbatches_unique": "0.08608830720186234",
+        "mae_allbatches_degree": "0.2766195833683014",
+        "mse_allbatches_degree": "0.8077917695045471",
+        "mae_allbatches_unique": "0.2580668330192566",
+        "mse_allbatches_unique": "0.6973782777786255",
+        "histogram_wasserstein_distance_degree": "0.04244791017290811",
+        "histogram_kl_divergence_degree": "18.459633934037342",
+        "histogram_mmd_distance_degree": "9.999999747378752e-06",
+        "histogram_wasserstein_distance_unique": "0.04244791017290811",
+        "histogram_kl_divergence_unique": "18.459633934037342",
+        "histogram_mmd_distance_unique": "9.999999747378752e-06"
     }
 }

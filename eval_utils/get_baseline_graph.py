@@ -5,7 +5,7 @@ import torch
 import os
 import pandas as pd
 import numpy as np
-
+import re
 from . import get_gt_data
 
 
@@ -69,7 +69,8 @@ def get_baseline_graphs(args):
         ],
          "8days_dytag_small_text_en":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv",
-            "LLMGGen/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv"
+            "LLMGGen/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv",
+            "LLMGGen/baselines/DYMOND/8days_dytag_small_text_en/learned_parameters/generated_graph/results/generated_edges.csv"
         ],
         "weibo_daily":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_daily.csv",
@@ -88,7 +89,9 @@ def get_baseline_graphs(args):
     test_data = get_gt_data(data_ctdg, node_msg=args.node_msg, edge_msg=args.edge_msg)
     baseline_graphs = {}
     if args.cut_off_baseline == "edge":
-        for baseline_name, baseline_path in zip([ "dggen","tigger"], data_baseline_map[args.data_name]):
+        for baseline_path in data_baseline_map[args.data_name]:
+            match = re.search(r'LLMGGen/baselines/([^/]+)/', baseline_path)
+            baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
             baseline_data = get_snapshot_graph(baseline_path, 
                                                time_window=None, 
                                                cut_edge_number=test_data.src.shape[0])      
@@ -108,11 +111,10 @@ def get_baseline_graphs(args):
                 baseline_graphs[baseline_name] = [baseline_data]     
             
     elif args.cut_off_baseline == "time_window":
-        for baseline_name, baseline_path in zip([ "dggen","tigger"], data_baseline_map[args.data_name]):
-            if baseline_name in ["dggen"]:
-                time_window = data_ctdg.pred_len*data_ctdg.time_window
-            elif baseline_name in ["tigger"]:
-                time_window = data_ctdg.pred_len
+        for baseline_path in data_baseline_map[args.data_name]:
+            match = re.search(r'LLMGGen/baselines/([^/]+)/', baseline_path)
+            baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
+            time_window = data_ctdg.pred_len
                 
             baseline_data = get_snapshot_graph(baseline_path, 
                                                time_window=time_window, 
@@ -139,4 +141,4 @@ def get_baseline_graphs(args):
     max_node_number = data_ctdg.node_text.shape[0]-1
     
     
-    return [test_data], baseline_graphs["tigger"], baseline_graphs["dggen"], max_node_number, data_ctdg.node_text, data_ctdg.node_feature
+    return [test_data], baseline_graphs, max_node_number, data_ctdg.node_text, data_ctdg.node_feature

@@ -51,7 +51,7 @@ Dataset_Template = {
         },
         "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
     },
-    "8days_dytag_large_text": {
+    "propagate_large": {
         "description": "This network represent market network of taoke members; nodes are members, edges are item propagations.",
         "edge_text_template": """
 <ts_str>{ts_str}</ts_str>
@@ -116,18 +116,14 @@ Dataset_Template = {
         },
         "node_text_template": """
 <actor_name>{actor_name}</actor_name>
-<birth_year>{birth_year}</birth_year>
-<death_year>{death_year}</death_year>
 <primary_profession>{primary_profession}</primary_profession>
 <actor_description>{actor_description}</actor_description>""",
         "node_text_hint": {
             "actor_name": "Actor name",
-            "birth_year": "Actor birth year",
-            "death_year": "Actor death year",
             "primary_profession": "Actor profession",
             "actor_description": "Actor description",
         },
-        "node_text_cols": ["actor_name", "birth_year", "death_year", "primary_profession", "actor_description"],
+        "node_text_cols": ["actor_name","primary_profession", "actor_description"],
     },
     "weibo_daily": {
         "description": "This network represent social interaction graph among Weibo users focused on technology and digital products.",
@@ -155,13 +151,42 @@ Dataset_Template = {
         "node_text_hint": {
             "user_name": "User name",
             "user_source": "User source",
-            "user_gender": "User gender",
+            "user_gender": "User gender", 
             "user_location": "User location",
             "user_followers": "User followers",
             "user_friends": "User followees",
             "user_description": "User description",
         },
         "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
+    },
+    "cora": {
+        "description": "This network represent paper citing network among paper authors, each node is one paper.",
+        "goal": "As an academic paper, you need to search for other related papers which will be cited in the paper.",
+        "edge_text_template": """
+<ts_str>{ts_str}</ts_str>
+<label>{label}</label>
+<cited_text>{cited_text}</cited_text>""",
+        "edge_text_cols": ["ts_str", "label", "cited_text"],
+        "edge_text_hint": {
+            "label": "The section of the citation (5 Types: 1.Intro & Background, 2.Tech & Methodology, 3.Experiment & Conclusion, 4.Topic-specific, 5. Others)",
+            "ts_str": "Interaction time",
+            "cited_text": "The text of the citation sentence",
+        },
+        "node_text_template": """
+<title>{title}</title>
+<paper_category>{paper_category}</paper_category>
+<num_cited>{num_cited}</num_cited>
+<authors_citations>{authors_citations}</authors_citations>
+<paper_description>{paper_description}</paper_description>
+""",
+        "node_text_hint": {       
+            "title":  "The paper title",
+            "paper_category": "The category of the generated paper (7 Types: 1.Probabilistic_Methods, 2.Reinforcement_Learning, 3.Neural_Networks, 4.Case_Based, 5.Theory, 6.Rule_Learning, 7.Genetic_Algorithms)",
+            "num_cited": "The paper citation",
+            "authors_citations": "Author and his/her citation count",
+            "paper_description": "The description/abstract of the generated paper",
+        },
+        "node_text_cols": ["title", "paper_category", "num_cited", "authors_citations", "paper_description"],
     },
 }
 
@@ -1078,11 +1103,25 @@ if __name__ == "__main__":
         root=args.root,
         use_feature=args.use_feature,
         cm_order=args.cm_order,
-        force_reload=args.force_reload
+        # force_reload=args.force_reload
     )
     
     print(f"Root: {bwr_ctdg.root}")
     print(f"BWR: {bwr_ctdg.bwr}")
+    print(f"Node feature: {bwr_ctdg.data.node_feature.shape}")
+    print(f"Edge feature: {bwr_ctdg.data.edge_feature.shape}")
     print(f"Input length: {bwr_ctdg.train_data.input_len}")
     print(f"Prediction length: {bwr_ctdg.train_data.pred_len}")
-    
+    print(f"Graph length: {bwr_ctdg.train_data.input_len+ 3*bwr_ctdg.train_data.pred_len}")
+    # 测试数据集的 src_node_degree 按照 N*T 对第0维求sum，求mean，max，min
+    test_src_node_degree = bwr_ctdg.data.ctdg_src_node_degree.sum(axis=0)
+    # 按照 N*T，第0维求sum
+    degree_sum = test_src_node_degree.sum()
+    degree_mean = test_src_node_degree.mean()
+    degree_max = test_src_node_degree.max()
+    degree_min = test_src_node_degree.min()
+    print("Test dataset src_node_degree stats per time window:")
+    print("Sum:", degree_sum)
+    print("Mean:", degree_mean)
+    print("Max:", degree_max)
+    print("Min:", degree_min)

@@ -254,38 +254,38 @@ def evaluate_nodes(gt_edge_matrix,
     src_results = []
     if test_src_indices is None:
         test_src_indices = np.where(gt_edge_matrix.sum(axis=1) > 0)[0]
-    if node_text is not None:
-        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+    # if node_text is not None:
+    #     scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
     
     # 优化文本评估，批量处理所有节点的文本，减少bert_score和ROUGE的调用次数
-    if node_text is not None:
-        # 先批量收集所有节点的预测和参考文本
-        all_preds = []
-        all_refs = []
-        node_indices = []
-        for i in test_src_indices:
-            preds = node_text[pred_edge_matrix[i, :] > 0].astype(str).tolist()
-            refs = node_text[gt_edge_matrix[i, :] > 0].astype(str).tolist()
-            all_preds.append("\n".join(preds))
-            all_refs.append("\n".join(refs))
-            node_indices.append(i)
-        # 批量计算ROUGE_L
-        rouge_scores = [calc_rouge_l(scorer, pred, ref) for pred, ref in zip(all_preds, all_refs)]
-        # 批量计算BERTScore
-        P, R, F1 = bert_score(all_preds, all_refs, lang='en', rescale_with_baseline=True)
-        F1 = F1.cpu().numpy() if hasattr(F1, 'cpu') else F1  # 兼容tensor
-        # 再遍历节点，填充node_matrix
-        for idx, i in enumerate(test_src_indices):
-            node_matrix = {}
-            node_matrix['ROUGE_L'] = rouge_scores[idx]
-            node_matrix[f"BERTScore_F1"] = float(F1[idx])
-            node_matrix.update(evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10))
-            src_results.append(node_matrix)
-    else:
-        for i in test_src_indices:
-            node_matrix = evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10)
-            src_results.append(node_matrix)
-    
+    # if node_text is not None:
+    #     # 先批量收集所有节点的预测和参考文本
+    #     all_preds = []
+    #     all_refs = []
+    #     node_indices = []
+    #     for i in test_src_indices:
+    #         preds = node_text[pred_edge_matrix[i, :] > 0].astype(str).tolist()
+    #         refs = node_text[gt_edge_matrix[i, :] > 0].astype(str).tolist()
+    #         all_preds.append("\n".join(preds))
+    #         all_refs.append("\n".join(refs))
+    #         node_indices.append(i)
+    #     # 批量计算ROUGE_L
+    #     rouge_scores = [calc_rouge_l(scorer, pred, ref) for pred, ref in zip(all_preds, all_refs)]
+    #     # 批量计算BERTScore
+    #     P, R, F1 = bert_score(all_preds, all_refs, lang='en', rescale_with_baseline=True)
+    #     F1 = F1.cpu().numpy() if hasattr(F1, 'cpu') else F1  # 兼容tensor
+    #     # 再遍历节点，填充node_matrix
+    #     for idx, i in enumerate(test_src_indices):
+    #         node_matrix = {}
+    #         node_matrix['ROUGE_L'] = rouge_scores[idx]
+    #         node_matrix[f"BERTScore_F1"] = float(F1[idx])
+    #         node_matrix.update(evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10))
+    #         src_results.append(node_matrix)
+    # else:
+    for i in test_src_indices:
+        node_matrix = evaluate_src(gt_edge_matrix[i, :], pred_edge_matrix[i, :], k=10)
+        src_results.append(node_matrix)
+
     src_agg = {
         f"{k}_node": np.mean([result[k] for result in src_results])
         for k in src_results[0].keys()
@@ -532,17 +532,16 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     results = []
-    test_data, tigger_data, dggen_data, max_node_number, node_text, node_feature = get_baseline_graphs(args)
+    test_data, baseline_data_map, max_node_number, node_text, node_feature = get_baseline_graphs(args)
     test_data = test_data[0]
-    tigger_data = tigger_data[0]
-    dggen_data = dggen_data[0]
     
 
     test_edge_matrix = get_ctdg_edges(test_data, max_node_number)
 
 
     
-    for baseline_name, baseline_data in [('tigger', tigger_data), ('dggen', dggen_data)]:
+    for baseline_name, baseline_data in baseline_data_map.items():
+        baseline_data = baseline_data[0]
         baseline_edge_matrix = get_ctdg_edges(baseline_data, max_node_number)
        
         
@@ -556,7 +555,7 @@ if __name__ == "__main__":
         results.append(eval_matrixs)
     
     df = pd.DataFrame(results)
-    output_path = f'reports/baselines/{args.data_name}/{args.split}/result_baseline.csv'
+    output_path = f'reports/baselines/{args.data_name}/{args.split}/result_baseline_{args.cut_off_baseline}.csv'
     dir = os.path.dirname(output_path)
     if not os.path.exists(dir):
         os.makedirs(dir)

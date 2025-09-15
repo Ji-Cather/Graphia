@@ -375,12 +375,14 @@ class NegativeEdgeSampler(object):
             raise ValueError(f'Not implemented error for negative_sample_strategy {self.negative_sample_strategy}!')
         return negative_src_node_ids, negative_dst_node_ids
 
-    def random_sample(self, size: int):
+    def random_sample(self, size: int = None):
         """
         random sampling strategy, which is used by previous works
         :param size: int, number of sampled negative edges
         :return:
         """
+        if size is None:
+            return self.unique_src_node_ids, self.unique_dst_node_ids
         if self.seed is None:
             random_sample_edge_src_node_indices = np.random.randint(0, len(self.unique_src_node_ids), size)
             random_sample_edge_dst_node_indices = np.random.randint(0, len(self.unique_dst_node_ids), size)
@@ -407,8 +409,8 @@ class NegativeEdgeSampler(object):
         return np.array([possible_random_edges[random_edge_idx][0] for random_edge_idx in random_edge_indices]), \
                np.array([possible_random_edges[random_edge_idx][1] for random_edge_idx in random_edge_indices])
 
-    def historical_sample(self, size: int, batch_src_node_ids: np.ndarray, batch_dst_node_ids: np.ndarray,
-                          current_batch_start_time: float, current_batch_end_time: float):
+    def historical_sample(self,  batch_src_node_ids: np.ndarray, batch_dst_node_ids: np.ndarray,
+                          current_batch_start_time: float, current_batch_end_time: float, size:int=None):
         """
         historical sampling strategy, first randomly samples among historical edges that are not in the current batch,
         if number of historical edges is smaller than size, then fill in remaining edges with randomly sampled edges

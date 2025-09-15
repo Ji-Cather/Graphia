@@ -433,7 +433,8 @@ if __name__ == "__main__":
         ],
          "8days_dytag_small_text_en":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv",
-            "LLMGGen/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv"
+            "LLMGGen/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv",
+            "LLMGGen/baselines/DYMOND/8days_dytag_small_text_en/learned_parameters/generated_graph/results/generated_edges.csv"
         ],
         "weibo_daily":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_daily.csv",
@@ -455,27 +456,20 @@ if __name__ == "__main__":
     target_degrees, target_unique_degrees = get_ctdg_outdegrees(test_data, max_node_number, time_window= dataset.time_window)
     
     results = []
-    
+    import re
     # 计算degree和unique degree的损失
     # for degree_type, target_deg in [('degree', target_degrees[:,-1]), 
     #                                 ('unique', target_unique_degrees[:,-1])]:
     # tigger-I
-    tigger_path = data_baseline_map[args.data_name][1]
-    tigger_out_degrees_list = get_graph_snapshots(tigger_path, max_node_number, time_window=1, undirected=True)
-    tigger_loss = calculate_model_loss(tigger_out_degrees_list, target_degrees[:,-1], target_unique_degrees[:,-1], 'tigger')
-    if tigger_loss:
-        # tigger_loss['type'] = degree_type
-        tigger_loss['dataset'] = args.data_name
-        results.append(tigger_loss)
-
-    # dggen
-    dggen_path = data_baseline_map[args.data_name][0]
-    dggen_out_degrees_list = get_graph_snapshots(dggen_path, max_node_number, time_window=1, undirected=False)
-    dggen_loss = calculate_model_loss(dggen_out_degrees_list, target_degrees[:,-1], target_unique_degrees[:,-1], 'dggen')
-    if dggen_loss:
-        # dggen_loss['type'] = degree_type
-        dggen_loss['dataset'] = args.data_name
-        results.append(dggen_loss)
+    for baseline_path in data_baseline_map[args.data_name]:
+        match = re.search(r'LLMGGen/baselines/([^/]+)/', baseline_path)
+        baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
+        out_degrees_list = get_graph_snapshots(baseline_path, max_node_number, time_window=1, undirected=True)
+        loss = calculate_model_loss(out_degrees_list, target_degrees[:,-1], target_unique_degrees[:,-1], baseline_name)
+        if  loss:
+            # tigger_loss['type'] = degree_type
+            loss['dataset'] = args.data_name
+            results.append(loss)
 
     # 创建DataFrame
     df = pd.DataFrame(results)

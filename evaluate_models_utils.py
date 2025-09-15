@@ -415,13 +415,13 @@ def evaluate_model_retrival(model_name: str, model: nn.Module, neighbor_sampler:
                 evaluate_data.node_interact_times[evaluate_data_indices], evaluate_data.edge_ids[evaluate_data_indices]
 
             if evaluate_neg_edge_sampler.negative_sample_strategy != 'random':
-                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=1000,
+                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=100,
                                                                                 batch_src_node_ids=batch_src_node_ids,
                                                                                 batch_dst_node_ids=batch_dst_node_ids,
                                                                                 current_batch_start_time=batch_node_interact_times[0],
                                                                                 current_batch_end_time=batch_node_interact_times[-1])
             else:
-                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=1000)
+                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=100)
             batch_neg_src_node_ids = batch_src_node_ids
 
             # we need to compute for positive and negative edges respectively, because the new sampling strategy (for evaluation) allows the negative source nodes to be
