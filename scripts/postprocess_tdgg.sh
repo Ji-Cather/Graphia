@@ -43,23 +43,23 @@ export bwr=1980
 
 # query: tdgg
 # for llm in $tdgg_rl_query_model qwen3 qwen3_sft 
-# for llm in $tdgg_rl_query_model 
-# do
-#     export llm=${llm}
-#     export llm_save_root=LLMGGen/results/${llm}
-#     export report_save_root=LLMGGen/reports/${llm}
-#     for mode in process_tf
-#     do
-#         export mode=${mode}
-#         bash LLMGGen/scripts/postprocess_ggen_loop.sh >> query_${data_name}.log
-#     done
-# done
+for llm in Qwen3-32B
+do
+    export llm=${llm}
+    export llm_save_root=LLMGGen/results/${llm}
+    export report_save_root=LLMGGen/reports/${llm}
+    for mode in process_tf
+    do
+        export mode=${mode}
+        bash LLMGGen/scripts/postprocess_ggen_loop.sh >> query_${data_name}.log
+    done
+done
 
 
 # edge: tdgg
 # get edge text, and edge text eval
 # for llm in $tdgg_rl_edge_model qwen3 qwen3_sft 
-for llm in $tdgg_rl_edge_model
+for llm in Qwen3-32B
 do
     export llm=${llm}
     export llm_save_root=LLMGGen/results/${llm}

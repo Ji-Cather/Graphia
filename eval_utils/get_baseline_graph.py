@@ -8,7 +8,7 @@ import numpy as np
 import re
 from . import get_gt_data
 
-
+from datetime import datetime
 def get_snapshot_graph(path, time_window:int = None, cut_edge_number:int = None):
     if (time_window is None and cut_edge_number is None) or (time_window is not None and cut_edge_number is not None):
         raise ValueError("time_window和cut_edge_number必须且只能设置其中一个")
@@ -17,20 +17,46 @@ def get_snapshot_graph(path, time_window:int = None, cut_edge_number:int = None)
     df = pd.read_csv(path)
     
     # 确保时间戳按升序排序
-    df = df.sort_values(by='t')
-    
-    if cut_edge_number:
-        df_sub = df.iloc[:cut_edge_number]
-    else:
-        # 计算时间范围
-        min_time = df['t'].min()
-        max_time = df['t'].max()+ 1 if (df['t'].max() - df['t'].min())< time_window else df['t'].min() + time_window
+    try:
+        df = df.sort_values(by='t')
+        if cut_edge_number:
+            df_sub = df.iloc[:cut_edge_number]
+        else:
+            # 计算时间范围
+            min_time = df['t'].min()
+            max_time = df['t'].max()+ 1 if (df['t'].max() - df['t'].min())< time_window else df['t'].min() + time_window
+            
+            df_sub = df[(df['t'] >= min_time) & (df['t'] < max_time)]
         
-        df_sub = df[(df['t'] >= min_time) & (df['t'] < max_time)]
-    
+        
+    except:
+        # 定义 int64 的上下限
+        # 时间超过上限，被认为是str
+        def is_integer_value(x):
+            try:
+                return x < time_window
+            except (TypeError, ValueError):
+                return False
+
+        # 应用过滤
+        mask = df['t'].apply(is_integer_value)
+        df = df[mask].copy()
+        # 方法 1：先转为数值型，再转为 int64（推荐）
+        df['t'] = pd.to_numeric(df['t'], errors='coerce').astype('Int64')
+
+        if cut_edge_number:
+            df_sub = df.iloc[:cut_edge_number]
+        else:
+            # 计算时间范围
+            min_time = df['t'].min()
+            max_time = df['t'].max()+ 1 if (df['t'].max() - df['t'].min())< time_window else df['t'].min() + time_window
+            
+            df_sub = df[(df['t'] >= min_time) & (df['t'] < max_time)]
+
     data = TemporalData(src=torch.tensor(df_sub['src'].values), 
                         dst=torch.tensor(df_sub['dst'].values), 
                         t=torch.tensor(df_sub['t'].values))
+    
     return data
 
 def get_baseline_graphs(args):
@@ -83,6 +109,9 @@ def get_baseline_graphs(args):
         "weibo_tech":[
             "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_tech.csv",
             "LLMGGen/baselines/tigger/models/weibo_tech/results/generated_edges.csv"
+        ],
+        "propagate_large_cn":[
+            "LLMGGen/baselines/tigger/scripts/models/propagate_large_cn/results/generated_edges.csv"
         ]
     }
     
@@ -110,7 +139,7 @@ def get_baseline_graphs(args):
                 baseline_data.msg = msg
                 baseline_graphs[baseline_name] = [baseline_data]     
             
-    elif args.cut_off_baseline == "time_window":
+    elif args.cut_off_baseline == "time":
         for baseline_path in data_baseline_map[args.data_name]:
             match = re.search(r'LLMGGen/baselines/([^/]+)/', baseline_path)
             baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
@@ -141,4 +170,4 @@ def get_baseline_graphs(args):
     max_node_number = data_ctdg.node_text.shape[0]-1
     
     
-    return [test_data], baseline_graphs, max_node_number, data_ctdg.node_text, data_ctdg.node_feature
+    return [test_data], baseline_graphs, max_node_number, data_ctdg.node_text, data_ctdg.node_feature, data_ctdg.pred_len, data_ctdg.unique_times

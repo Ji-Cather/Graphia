@@ -11,3 +11,4 @@ saved_models/
 
 __pycache__/
 baselines/
+lp_models/

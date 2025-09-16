@@ -24,13 +24,22 @@ def merge_graph_matrices(root_dir="LLMGGen/reports",
             if file_name =="dst_retrival_matrix.csv":
                 df = pd.read_csv(csv_path)
             else:
-                df = pd.read_csv(csv_path, index_col=0)
+                df = pd.read_csv(csv_path)
 
             # 添加来源信息
-            df['model'] = model
+            if "model" not in df.columns:
+                df['model'] = model
             df['dataset'] = dataset
             df['split'] = split
             df['task'] = task
+            
+            # 要删除的列名列表
+            cols_to_drop = ["Unnamed: 0", "experiment_name"]
+
+            # 只保留实际存在于 df 中的列，然后删除
+            cols_to_drop_existing = [col for col in cols_to_drop if col in df.columns]
+            # 或者更简洁的方式是使用 errors='ignore'
+            df.drop(columns=cols_to_drop_existing, errors='ignore', inplace=True)
 
             all_data.append(df)
             print(f"✅ 已加载: {csv_path}")

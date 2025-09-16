@@ -149,9 +149,9 @@ def evaluate_hubs(gt_edge_matrix, pred_edge_matrix, k=20):
 
 
     return {
-        f"precision@{k}": precision,
-        f"f1{k}": f1,
-        f"auc{k}": auc
+        f"precision@20%N": precision,
+        f"f1@20%N": f1,
+        f"auc@20%N": auc
     }
 
 
@@ -228,7 +228,7 @@ def evaluate_graphs(gt_edge_matrix,
     
     
     graph_metrics = {}
-    jl_result = jl_all_graph(gt_graph, pred_graph)
+    # jl_result = jl_all_graph(gt_graph, pred_graph)
     graph_embedding_result = graph_embedding_all_graph(gt_graph, pred_graph, node_feature)
     abs_result = evaluate_graph_metric(gt_edge_matrix, pred_edge_matrix)
     
@@ -239,12 +239,97 @@ def evaluate_graphs(gt_edge_matrix,
 
     edge_overlap = np.sum((gt_edge_matrix > 0) & (pred_edge_matrix > 0)) / np.sum(gt_edge_matrix > 0)
     graph_metrics['edge_overlap'] = edge_overlap
-    graph_metrics.update(jl_result)
+    # graph_metrics.update(jl_result)
     graph_metrics.update(graph_embedding_result)
     graph_metrics.update(abs_result)
 
     return graph_metrics
 
+
+def evaluate_graph_snapshots(gt_graphs, pred_graphs):
+    from .mmd import evaluate_sampled_graphs
+    
+    # Filter out pred_graphs that have no edges and no nodes
+    filtered_pred_graphs = []
+    
+    
+    for i, ( pred_graph) in enumerate(pred_graphs):
+        # Check if pred_graph has any nodes or edges
+        if pred_graph.number_of_nodes() > 0 and pred_graph.number_of_edges() > 0:
+            filtered_pred_graphs.append(pred_graph)
+        else:
+            # Optionally print which graphs are being filtered out
+            # print(f"Filtering out graph {i} with {pred_graph.number_of_nodes()} nodes and {pred_graph.number_of_edges()} edges")
+            pass
+    
+    # If all graphs were filtered out, return empty results
+    if len(filtered_pred_graphs) == 0:
+        print("Warning: All predicted graphs were filtered out (no nodes or edges)")
+        return {}
+    
+    # If some graphs were filtered out, print info
+    print(f"{len(gt_graphs)},{len(filtered_pred_graphs)}")
+    
+    mmd_results = evaluate_sampled_graphs(gt_graphs, filtered_pred_graphs)
+    return mmd_results
+
+import networkx as nx
+import numpy as np
+
+def split_temporal_graph_to_digraph_list(ctdg, unique_times):
+    """
+    Split temporal graph data into a list of NetworkX DiGraphs, one for each time window.
+    
+    Args:
+        ctdg: TemporalData object containing src, dst, t, and edge_id
+        unique_times: array of unique time points
+        
+    Returns:
+        list: List of NetworkX DiGraphs, one for each time window
+    """
+    
+    graph_list = []
+    
+    # Process each time window
+    for t in range(len(unique_times)):
+        # Create a DiGraph for this time window
+        graph = nx.DiGraph()
+        
+        # Get edge indices for current time window using the same logic as in the original code
+        if t == len(unique_times) - 1:
+            mask = (ctdg.t >= unique_times[t])
+        elif t == 0:
+            mask = (ctdg.t < unique_times[t+1])
+        else:
+            mask = (ctdg.t >= unique_times[t]) & (ctdg.t < unique_times[t+1])
+        
+        # Extract edges for this time window
+        src_nodes = ctdg.src[mask]
+        dst_nodes = ctdg.dst[mask]
+        timestamps = ctdg.t[mask]
+        
+        # Add nodes and edges to the graph
+        for i in range(len(src_nodes)):
+            src = src_nodes[i].item()
+            dst = dst_nodes[i].item()
+            timestamp = timestamps[i].item()
+            
+            # Add nodes if they don't exist
+            if not graph.has_node(src):
+                graph.add_node(src)
+            if not graph.has_node(dst):
+                graph.add_node(dst)
+            
+            # Add edge with attributes
+            graph.add_edge(src, dst, timestamp=timestamp)
+        
+        # Add the graph to our list
+        graph_list.append(graph)
+    
+    return graph_list
+
+
+    
 
 def evaluate_nodes(gt_edge_matrix, 
                    pred_edge_matrix,
@@ -527,37 +612,110 @@ if __name__ == "__main__":
     parser.add_argument('--cut_off_baseline', type=str, default="edge", help='cut_off_baseline')
     parser.add_argument('--node_msg', type=bool, default=False, help='是否使用节点消息')
     parser.add_argument('--edge_msg', type=bool, default=False, help='是否使用边消息')
-    
-    
-    
+    parser.add_argument('--graph_report_path', type=str, default="", help='graph_matrix.csv')
+    parser.add_argument('--graph_list_report_path', type=str, default="", help='graph_list_matrix.csv')
+
+
     args = parser.parse_args()
-    results = []
-    test_data, baseline_data_map, max_node_number, node_text, node_feature = get_baseline_graphs(args)
-    test_data = test_data[0]
-    
+    dfs = []
+    dfs_snapshot = []
 
-    test_edge_matrix = get_ctdg_edges(test_data, max_node_number)
-
-
-    
-    for baseline_name, baseline_data in baseline_data_map.items():
-        baseline_data = baseline_data[0]
-        baseline_edge_matrix = get_ctdg_edges(baseline_data, max_node_number)
-       
+    if args.graph_report_path != "":
         
-        graph_matrixs = evaluate_graphs(test_edge_matrix,
-                                        baseline_edge_matrix,
-                                        test_data, 
-                                        baseline_data,
-                                        node_feature=node_feature)
-        eval_matrixs = graph_matrixs
-        eval_matrixs["model"] = baseline_name
-        results.append(eval_matrixs)
+        
+        
+        results = []
+        results_snapshot = []
+        for cut_off_baseline in ["edge", "time"]:
+            args.cut_off_baseline = cut_off_baseline
+            test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
+                = get_baseline_graphs(args)
+            test_data = test_data[0]
+            pred_times = unique_times[-pred_len:]
+            test_edge_matrix = get_ctdg_edges(test_data, max_node_number)
+
+            
+            for baseline_name, baseline_data in baseline_data_map.items():
+                baseline_data = baseline_data[0]
+                baseline_edge_matrix = get_ctdg_edges(baseline_data, max_node_number)
+                graph_matrixs = evaluate_graphs(test_edge_matrix,
+                                                baseline_edge_matrix,
+                                                test_data, 
+                                                baseline_data,
+                                                node_feature=node_feature)
+                graph_matrixs["model"] = f"{baseline_name}_{cut_off_baseline}"
+                results.append(graph_matrixs)
+
+            output_path = args.graph_report_path
+            dir = os.path.dirname(output_path)
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            df = pd.DataFrame(results)
+            df.to_csv(output_path)
+            dfs.append(df)
+
+        # 保存所有结果
+        if dfs:  # 如果有graph_report结果
+            df_all = pd.concat(dfs, ignore_index=True)  # 添加ignore_index=True
+            output_path = args.graph_report_path
+            dir = os.path.dirname(output_path)
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            df_all.to_csv(output_path, index=False)  # 添加index=False避免重复索引
+            print(f"All results saved to {output_path}")
+
+
+    if args.graph_list_report_path != "":
+        
+        args.cut_off_baseline = "time"
+        
+        results = []
+        results_snapshot = []
+        test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
+            = get_baseline_graphs(args)
+        test_data = test_data[0]
+        pred_times = unique_times[-pred_len:]
+       
+        if args.graph_list_report_path != "":
+            gt_graph_list = split_temporal_graph_to_digraph_list(
+                test_data,
+                pred_times
+                # np.arange(len(pred_times))
+            )
+        
+        for baseline_name, baseline_data in baseline_data_map.items():
+            baseline_data = baseline_data[0]
+           
+
+            if args.graph_list_report_path != "":
+                pred_graph_list = split_temporal_graph_to_digraph_list(
+                    baseline_data,
+                    np.arange(len(pred_times))
+                )
+                graph_list_matrixs = evaluate_graph_snapshots(
+                    gt_graph_list,
+                    pred_graph_list
+                )
+                
+                graph_list_matrixs["model"] = f"{baseline_name}"
+                results_snapshot.append(graph_list_matrixs)
     
-    df = pd.DataFrame(results)
-    output_path = f'reports/baselines/{args.data_name}/{args.split}/result_baseline_{args.cut_off_baseline}.csv'
-    dir = os.path.dirname(output_path)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-    df.set_index('model', inplace=True)
-    df.to_csv(output_path)
+        if args.graph_list_report_path != "":
+            output_path = args.graph_list_report_path
+            dir = os.path.dirname(output_path)
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            df = pd.DataFrame(results_snapshot)
+            df.to_csv(output_path)
+            dfs_snapshot.append(df)
+
+    
+        # 如果也有snapshot结果，可以单独保存
+        if dfs_snapshot:  # 如果有graph_list_report结果
+            df_snapshot_all = pd.concat(dfs_snapshot, ignore_index=True)
+            snapshot_output_path = args.graph_list_report_path
+            dir = os.path.dirname(snapshot_output_path)
+            if dir and not os.path.exists(dir):
+                os.makedirs(dir)
+            df_snapshot_all.to_csv(snapshot_output_path, index=False)
+            print(f"All snapshot results saved to {snapshot_output_path}")

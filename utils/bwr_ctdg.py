@@ -1113,6 +1113,7 @@ if __name__ == "__main__":
     print(f"Input length: {bwr_ctdg.train_data.input_len}")
     print(f"Prediction length: {bwr_ctdg.train_data.pred_len}")
     print(f"Graph length: {bwr_ctdg.train_data.input_len+ 3*bwr_ctdg.train_data.pred_len}")
+    print(f"Label Num: {bwr_ctdg.train_data.label_feature.shape[0]}")
     # 测试数据集的 src_node_degree 按照 N*T 对第0维求sum，求mean，max，min
     test_src_node_degree = bwr_ctdg.data.ctdg_src_node_degree.sum(axis=0)
     # 按照 N*T，第0维求sum

@@ -1,4 +1,4 @@
-# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text_en --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
+python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/8days_dytag_small_text_en --time_window 86400 --bwr 1980 --use_feature bert --cm_order True --force_reload
 
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/propagate_large_cn --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
@@ -6,7 +6,7 @@
 
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/weibo_daily --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
-python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/imdb --time_window 31536000 --bwr 2048 --use_feature bert --cm_order True --force_reload
+# python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/imdb --time_window 31536000 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
 # python -m LLMGGen.utils.bwr_ctdg --pred_ratio 0.15 --root LLMGGen/data/cora --time_window 31536000 --bwr 2048 --use_feature bert --cm_order True --force_reload
 

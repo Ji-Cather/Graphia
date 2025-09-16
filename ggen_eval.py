@@ -10,9 +10,12 @@ from .utils.bwr_ctdg import (BWRCTDGALLDataset,
                             Dataset_Template)
 from .eval_utils import get_gt_data
 from .eval_utils.eval_src_edges import (get_ctdg_edges,
+                                        split_temporal_graph_to_digraph_list,
                                         evaluate_edges,
                                         evaluate_graphs,
-                                        evaluate_nodes)
+                                        evaluate_nodes,
+                                        evaluate_graph_snapshots
+                                        )
 
 
 def eval_graph_structure(
@@ -33,6 +36,7 @@ def eval_graph_structure(
                                     gt_graph,
                                     gen_graph,
                                     node_feature = node_feature)
+                                    
     
     eval_matrixs = {
         **node_matrixs,
@@ -40,9 +44,17 @@ def eval_graph_structure(
     }
 
     return eval_matrixs
-   
-    
 
+
+def eval_graph_snapshot_structure(
+                pred_times:list[int],  
+                gt_graph:TemporalData,
+                gen_graph:TemporalData):
+    split_gt_graphs = split_temporal_graph_to_digraph_list(gt_graph, pred_times)
+    split_gen_graphs = split_temporal_graph_to_digraph_list(gen_graph, pred_times)
+    eval_matrixs = evaluate_graph_snapshots(split_gt_graphs, split_gen_graphs)
+    return eval_matrixs
+    
     
     
 def get_gen_data(df: pd.DataFrame,
@@ -162,6 +174,34 @@ def main(args):
         if args.graph_report_path is not None:
             os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
             report_df.to_csv(args.graph_report_path)
+
+    if args.graph_list_report_path is not None:
+
+        df = pd.read_csv(args.graph_result_path)
+        gt_graph = get_gt_data(data_ctdg, 
+                            node_msg=args.node_msg,
+                            edge_msg=args.edge_msg)
+        gen_graph = get_gen_data(df,
+                                data_ctdg,
+                                node_msg=args.node_msg,
+                                edge_msg=args.edge_msg)
+        pred_times = data_ctdg.unique_times[-data_ctdg.pred_len:]
+        gt_graph_snapshots = split_temporal_graph_to_digraph_list(
+            gt_graph, 
+            pred_times)
+        gen_graph_snapshots = split_temporal_graph_to_digraph_list(
+            gen_graph, 
+            pred_times)
+        
+        eval_matrixs = evaluate_graph_snapshots(gt_graph_snapshots, 
+                                                gen_graph_snapshots)
+        
+        print(f"评估指标: {eval_matrixs}")
+        eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
+        report_df = pd.DataFrame([eval_matrixs])
+        if args.graph_report_path is not None:
+            os.makedirs(os.path.dirname(args.graph_list_report_path), exist_ok=True)
+            report_df.to_csv(args.graph_list_report_path)
    
     
     
@@ -195,12 +235,15 @@ if __name__ == "__main__":
     # gen graph args
     parser.add_argument('--graph_result_path', type=str, default=None, help='ggen result path(query ggen)')
     parser.add_argument('--graph_report_path', type=str, default=None, help='graph result report path')
+    parser.add_argument('--graph_list_report_path', type=str, default=None, help='graph result report path')
     
     # edge text eval args
     parser.add_argument('--edge_result_path', type=str, default=None, help='ggen result path(edge ggen)')
     parser.add_argument('--edge_text_result_path', type=str, default=None, help='edge text eval result path')
     parser.add_argument('--edge_report_path', type=str, default=None, help='edge text eval result report path')
     
+
+
     args = parser.parse_args()
     
     main(args)

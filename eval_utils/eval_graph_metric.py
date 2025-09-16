@@ -276,19 +276,19 @@ def compute_graph_statistics(A_in):
     A_graph = nx.from_numpy_array(A).to_undirected()
     statistics = {}
     # start_time = time.time()
-    # d_max, d_min, d_mean = statistics_degrees(A)
-    # statistics['d_mean'] = d_mean
-    LCC = statistics_LCC(A)
-    statistics['LCC'] = LCC.shape[0]
+    d_max, d_min, d_mean = statistics_degrees(A)
+    statistics['d_mean'] = d_mean
+    # LCC = statistics_LCC(A)
+    # statistics['LCC'] = LCC.shape[0]
     statistics['wedge_count'] = statistics_wedge_count(A)
     claw_count = statistics_claw_count(A)
-    statistics['power_law_exp'] = statistics_power_law_alpha(A)
+    # statistics['power_law_exp'] = statistics_power_law_alpha(A)
     statistics['triangle_count'] = statistics_triangle_count(A)
-    statistics['rel_edge_distr_entropy'] = statistics_edge_distribution_entropy(A)
-    statistics['n_components'] = connected_components(A, directed=False)[0]
-    cc = closeness_centrality(A_graph)
-    statistics['closeness_centrality_mean'] = np.mean(list(cc.values()))
-    statistics['closeness_centrality_median'] = np.median(list(cc.values()))
+    # statistics['rel_edge_distr_entropy'] = statistics_edge_distribution_entropy(A)
+    # statistics['n_components'] = connected_components(A, directed=False)[0]
+    # cc = closeness_centrality(A_graph)
+    # statistics['closeness_centrality_mean'] = np.mean(list(cc.values()))
+    # statistics['closeness_centrality_median'] = np.median(list(cc.values()))
     # cc = betweenness_centrality(A_graph)
     # statistics['betweenness_centrality_mean'] = np.mean(list(cc.values()))
     # statistics['betweenness_centrality_median'] = np.median(list(cc.values()))
@@ -342,23 +342,26 @@ def evaluate_graph_metric(gt_adj: np.ndarray, pred_adj: np.ndarray):
     gt_graph_statistics = compute_graph_statistics(gt_adj)
     pred_graph_statistics = compute_graph_statistics(pred_adj)
     # mmd_results = {}
-    # mmd_beta_map = {
-    #     "d_mean": 1,
-    #     "LCC": 1,
-    #     "wedge_count": 1,
-    #     "power_law_exp": 1,
-    #     "triangle_count": 1,
-    #     "rel_edge_distr_entropy": 1,
-    #     "n_components": 1,
-    #     "closeness_centrality_mean": 1,
-    #     "closeness_centrality_median": 1,
-    #     "betweenness_centrality_mean": 1,
-    #     "betweenness_centrality_median": 1,
-    #     "clustering_coefficient": 1,
-    # }
+    mmd_beta_map = {
+        "d_mean": 1,
+        "LCC": 1,
+        "wedge_count": 1,
+        "power_law_exp": 1,
+        "triangle_count": 1,
+        "rel_edge_distr_entropy": 1,
+        "n_components": 1,
+        "closeness_centrality_mean": 1,
+        "closeness_centrality_median": 1,
+        "betweenness_centrality_mean": 1,
+        "betweenness_centrality_median": 1,
+        "clustering_coefficient": 1,
+        "degree": 1,
+    }
     # for metric in gt_graph_statistics.keys():
     #     mmd_results[metric] = calculate_mmd(gt_graph_statistics[metric], pred_graph_statistics[metric], mmd_beta_map[metric])
     
+
+
     abs_results = {}
     for metric in gt_graph_statistics.keys():
         abs_results[metric] = np.abs(gt_graph_statistics[metric] - pred_graph_statistics[metric])

@@ -21,6 +21,7 @@ set_inf_paths() {
     query_save_path="${llm_save_root}/${data_name}/test/inference/${query_file_name}"
     query_result_path="${llm_save_root}/${data_name}/test/inference/query_ggen.csv"
     graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix.csv"
+    graph_list_report_path="${report_save_root}/${data_name}/test/inference/graph_list_matrix.csv"
 }
 
 # === 主逻辑 ===
@@ -39,7 +40,10 @@ case "$mode" in
             --cm_order True \
             --query_save_path "$query_save_path" \
             --query_result_path "$query_result_path" \
-            --process_query_result
+            --process_query_result \
+            # --reward_sel gnn \
+            # --gnn_save_model_path "LLMGGen/lp_models/saved_models/GraphMixer/8days_dytag_small_text_en/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl" \
+            # --gnn_model_name GraphMixer
         ;;
     "eval_tf")
         echo "Mode: Evaluate tdgg query"
@@ -88,7 +92,9 @@ case "$mode" in
             --split test \
             --cm_order True \
             --graph_result_path "$query_result_path" \
-            --graph_report_path "$graph_report_path"
+            --graph_report_path "$graph_report_path" \
+            --graph_list_report_path "$graph_list_report_path" \
+            # --graph_report_path "$graph_report_path"
             # --node_msg \
             # --edge_msg
         ;;
