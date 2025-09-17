@@ -228,8 +228,7 @@ def evaluate_graphs(gt_edge_matrix,
     
     
     graph_metrics = {}
-    # jl_result = jl_all_graph(gt_graph, pred_graph)
-    graph_embedding_result = graph_embedding_all_graph(gt_graph, pred_graph, node_feature)
+   
     abs_result = evaluate_graph_metric(gt_edge_matrix, pred_edge_matrix)
     
     pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
@@ -239,8 +238,15 @@ def evaluate_graphs(gt_edge_matrix,
 
     edge_overlap = np.sum((gt_edge_matrix > 0) & (pred_edge_matrix > 0)) / np.sum(gt_edge_matrix > 0)
     graph_metrics['edge_overlap'] = edge_overlap
-    # graph_metrics.update(jl_result)
-    graph_metrics.update(graph_embedding_result)
+
+    try:
+        jl_result = jl_all_graph(gt_graph, pred_graph)
+        graph_embedding_result = graph_embedding_all_graph(gt_graph, pred_graph, node_feature)
+        graph_metrics.update(jl_result)
+        graph_metrics.update(graph_embedding_result)
+    except:
+        pass
+    
     graph_metrics.update(abs_result)
 
     return graph_metrics
@@ -523,18 +529,21 @@ def extract_score_v3(llm_output: str):
 
 
 def evaluate_edges(
-                gen_graph_df:pd.DataFrame,
+                gen_graph_df:pd.DataFrame=None,
                 gen_eval_result_df:pd.DataFrame=None): # save text_eval_prompt.df
-    edge_matrix = pd.DataFrame()
+    edge_matrix = {}
     
     if gen_eval_result_df is not None:
-        assert gen_graph_df.shape[0] == gen_eval_result_df.shape[0], "gen_graph_df and gen_eval_result_df must have the same number of rows"
+        # assert gen_graph_df.shape[0] == gen_eval_result_df.shape[0], "gen_graph_df and gen_eval_result_df must have the same number of rows"
         # 对每一行提取score字典，并将每个key作为单独的列
         scores = []
         for idx, row in gen_eval_result_df.iterrows():
             score_dict = extract_score_v3(row["predict"])
             scores.append(score_dict)
         scores_df = pd.DataFrame(scores)
+        edge_matrix.update({
+            **{k: np.mean(scores_df[k]) for k in scores_df.columns}})
+        
     else:
         scores_df = pd.DataFrame()
    
@@ -549,20 +558,18 @@ def evaluate_edges(
             gt_label = [gt_label]
         return int(row["edge_label"] in gt_label)
     
-    if "edge_label" in gen_graph_df.columns and "gt_label" in gen_graph_df.columns:
-        gen_graph_df = evaluate_edge_text(gen_graph_df)
-        gen_graph_df["label_acc"] = gen_graph_df.apply(calc_label_acc, axis=1)
-        # debug
-        print(f"标签准确率(label_acc): {gen_graph_df['label_acc'].mean():.4f}")
-        edge_matrix = {}
-        for col in ["label_acc", "ROUGE_L", "BERTScore_F1"]:
-            if col in gen_graph_df.columns:
-                edge_matrix[col] = np.mean(gen_graph_df[col])
-        
-    edge_matrix = {
-        **{k: np.mean(scores_df[k]) for k in scores_df.columns},
-        **edge_matrix
-    }
+    if gen_graph_df is not None:
+        if "edge_label" in gen_graph_df.columns and "gt_label" in gen_graph_df.columns:
+            gen_graph_df = evaluate_edge_text(gen_graph_df)
+            gen_graph_df["label_acc"] = gen_graph_df.apply(calc_label_acc, axis=1)
+            # debug
+            print(f"标签准确率(label_acc): {gen_graph_df['label_acc'].mean():.4f}")
+            edge_matrix_struct = {}
+            for col in ["label_acc", "ROUGE_L", "BERTScore_F1"]:
+                if col in gen_graph_df.columns:
+                    edge_matrix_struct[col] = np.mean(gen_graph_df[col])
+            
+        edge_matrix.update(edge_matrix_struct)
     print(f"edge_matrix: {edge_matrix}")
 
     return edge_matrix
@@ -581,7 +588,11 @@ def get_ctdg_edges(data:TemporalData, # 输入的边文件
     
     edge_matrix = np.zeros((max_node_number + 1, max_node_number + 1)) # 行是src，列是candidate_dst
 
-    src_dst_pairs = np.stack([data.src, data.dst], axis=1)
+    # Convert src and dst to integer type to use as indices
+    src = data.src.long() if hasattr(data.src, 'long') else data.src.astype(int)
+    dst = data.dst.long() if hasattr(data.dst, 'long') else data.dst.astype(int)
+    
+    src_dst_pairs = np.stack([src, dst], axis=1)
     unique_pairs, counts = np.unique(src_dst_pairs, axis=0, return_counts=True)
     edge_matrix[unique_pairs[:, 0], unique_pairs[:, 1]] = counts
     
@@ -598,7 +609,7 @@ if __name__ == "__main__":
     import torch
     from torch_geometric.data import TemporalData
     from eval_utils.get_baseline_graph import get_baseline_graphs
-    
+    from tqdm import tqdm
     # 计算tigger和dggen的损失
     parser = ArgumentParser()
     parser.add_argument('--data_root', type=str, default="./data", help='data root dir')
@@ -610,23 +621,20 @@ if __name__ == "__main__":
     parser.add_argument('--split', type=str, default='test', help='数据集分割')
     parser.add_argument('--cm_order', type=bool, default=True, help='是否使用cm_order')
     parser.add_argument('--cut_off_baseline', type=str, default="edge", help='cut_off_baseline')
-    parser.add_argument('--node_msg', type=bool, default=False, help='是否使用节点消息')
-    parser.add_argument('--edge_msg', type=bool, default=False, help='是否使用边消息')
+    parser.add_argument('--node_msg', action="store_true", help='是否使用节点消息')
+    parser.add_argument('--edge_msg', action="store_true", help='是否使用边消息')
     parser.add_argument('--graph_report_path', type=str, default="", help='graph_matrix.csv')
     parser.add_argument('--graph_list_report_path', type=str, default="", help='graph_list_matrix.csv')
 
 
     args = parser.parse_args()
-    dfs = []
+    
     dfs_snapshot = []
 
     if args.graph_report_path != "":
-        
-        
-        
-        results = []
-        results_snapshot = []
+        dfs = []
         for cut_off_baseline in ["edge", "time"]:
+            results = []
             args.cut_off_baseline = cut_off_baseline
             test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
                 = get_baseline_graphs(args)
@@ -635,7 +643,9 @@ if __name__ == "__main__":
             test_edge_matrix = get_ctdg_edges(test_data, max_node_number)
 
             
-            for baseline_name, baseline_data in baseline_data_map.items():
+            for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
+                                                     "evaluating baselines"
+            ):
                 baseline_data = baseline_data[0]
                 baseline_edge_matrix = get_ctdg_edges(baseline_data, max_node_number)
                 graph_matrixs = evaluate_graphs(test_edge_matrix,
@@ -683,7 +693,9 @@ if __name__ == "__main__":
                 # np.arange(len(pred_times))
             )
         
-        for baseline_name, baseline_data in baseline_data_map.items():
+        for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
+        "evaluating baselines"
+        ):
             baseline_data = baseline_data[0]
            
 

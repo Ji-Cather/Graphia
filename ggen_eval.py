@@ -139,13 +139,22 @@ def main(args):
         raise ValueError(f"Invalid split: {args.split}")
     
     if args.edge_report_path is not None:
-        edge_df = pd.read_csv(args.edge_result_path)
-        if args.edge_text_result_path is not None and os.path.exists(args.edge_text_result_path):
+        
+        if os.path.exists(args.edge_report_path):
+            report_edge_df = pd.read_csv(args.edge_report_path)
             edge_text_df = pd.read_csv(args.edge_text_result_path)
-            edge_matrix = evaluate_edges(edge_df, edge_text_df)
+            edge_matrix = evaluate_edges(None, edge_text_df)
+            edge_matrix = pd.DataFrame([edge_matrix])
+            report_edge_df = pd.concat([report_edge_df, edge_matrix], axis=1)
         else:
-            edge_matrix = evaluate_edges(edge_df, None)
-        report_edge_df = pd.DataFrame([edge_matrix])
+            edge_df = pd.read_csv(args.edge_result_path)
+            if args.edge_text_result_path is not None and os.path.exists(args.edge_text_result_path):
+                edge_text_df = pd.read_csv(args.edge_text_result_path)
+                edge_matrix = evaluate_edges(edge_df, edge_text_df)
+            
+            else:
+                edge_matrix = evaluate_edges(edge_df, None)
+            report_edge_df = pd.DataFrame([edge_matrix])
         os.makedirs(os.path.dirname(args.edge_report_path), exist_ok=True)
         report_edge_df.to_csv(args.edge_report_path)
     

@@ -9,6 +9,7 @@ def get_gt_data(data,
                 node_msg: bool = False,
                 edge_msg: bool = False,
                 output_edge_ids: np.array = None,
+                pred_times: list[int] = None
                 ):
     if output_edge_ids == None:
         output_edge_ids = torch.concat(list(torch.tensor(v) for v in data.output_edges_dict.values()))
@@ -17,6 +18,7 @@ def get_gt_data(data,
     src = data.ctdg.src[indices]
     dst = data.ctdg.dst[indices]
     t = data.ctdg.t[indices]
+
     if not edge_msg and not node_msg:
         return TemporalData(src=src, dst=dst, t=t)
     elif edge_msg and not node_msg:

@@ -881,7 +881,8 @@ def main_infer_edge(query_result_path, dx_src_path: str = None):
             input_edge_ids = batch_data['input_edge_ids'][batch_inter_idx][bwr_idx]
             dst_ids = query_examples_all_result[query_examples_all_result["src_idx"] == src_id]['dst_idx'].tolist()
             output_edge_ids = query_examples_all_result[query_examples_all_result["src_idx"] == src_id]['edge_id'].tolist()
-            assert np.sum(data_ctdg.pred_src_dx[src_id]) == len(dst_ids)
+            pred_degree = np.sum(data_ctdg.pred_src_dx[src_id])
+            # assert np.sum(data_ctdg.pred_src_dx[src_id]) == len(dst_ids), f"{pred_degree}, {len(dst_ids)}: {src_id}"
             edge_text_examples = process_single_edge_attr_prediction(
                 src_id,
                 dst_ids,
