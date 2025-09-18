@@ -35,7 +35,7 @@ save_root="LLMGGen"
 ## tdgg
 # python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --rl --sft --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt 
 # python -m LLMGGen.src_edge_offline  --data_name $data_name --split val  --data_root ${data_root}  --rl --save_root ${save_root}
-python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
+# python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
 
 
 ## idgg
@@ -43,6 +43,8 @@ python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_r
 # python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt
 # python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
 
+# seq
+python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --edge_seq     --dst_seq
 
 # python  -m LLMGGen.convert_prompt_csv --phase "c2j" \
 #         --output_dir "/data/oss_bucket_0/jjr/LLMGGen/prompt_data" \

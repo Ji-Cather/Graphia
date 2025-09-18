@@ -600,6 +600,51 @@ def get_ctdg_edges(data:TemporalData, # 输入的边文件
 
 
 
+def temporal_data_to_nx_graph(temporal_data: TemporalData, 
+                             directed: bool = True) -> nx.Graph:
+    """
+    Convert TemporalData to NetworkX graph.
+    
+    Args:
+        temporal_data: TemporalData object with src, dst, t, and optionally msg attributes
+        directed: Whether to create a directed graph (default: True)
+        
+    Returns:
+        NetworkX graph (DiGraph if directed=True, Graph if directed=False)
+    """
+    # Create appropriate graph type
+    if directed:
+        graph = nx.DiGraph()
+    else:
+        graph = nx.Graph()
+    
+    # Get the data arrays
+    src_nodes = temporal_data.src.detach().cpu().numpy()
+    dst_nodes = temporal_data.dst.detach().cpu().numpy()
+    timestamps = temporal_data.t.detach().cpu().numpy()
+    
+    # Check if message features exist
+    has_msg = hasattr(temporal_data, 'msg') and temporal_data.msg is not None
+    if has_msg:
+        messages = temporal_data.msg.detach().cpu().numpy()
+    
+    # Add edges to the graph
+    for i in range(len(src_nodes)):
+        src = int(src_nodes[i])
+        dst = int(dst_nodes[i])
+        timestamp = int(timestamps[i])
+        
+        # Add edge with timestamp attribute
+        edge_attrs = {'timestamp': timestamp}
+        
+        # Add message attributes if they exist
+        if has_msg:
+            edge_attrs['msg'] = messages[i]
+            
+        graph.add_edge(src, dst, **edge_attrs)
+    
+    return graph
+
 
 
 
@@ -633,7 +678,8 @@ if __name__ == "__main__":
 
     if args.graph_report_path != "":
         dfs = []
-        for cut_off_baseline in ["edge", "time"]:
+        # for cut_off_baseline in ["edge", "time"]:
+        for cut_off_baseline in ["time","edge"]:
             results = []
             args.cut_off_baseline = cut_off_baseline
             test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
@@ -675,38 +721,84 @@ if __name__ == "__main__":
             print(f"All results saved to {output_path}")
 
 
+    # list
+    # if args.graph_list_report_path != "":
+        
+    #     args.cut_off_baseline = "time"
+        
+    #     results = []
+    #     results_snapshot = []
+    #     test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
+    #         = get_baseline_graphs(args)
+    #     test_data = test_data[0]
+    #     pred_times = unique_times[-pred_len:]
+       
+    #     if args.graph_list_report_path != "":
+    #         gt_graph_list = split_temporal_graph_to_digraph_list(
+    #             test_data,
+    #             pred_times
+    #             # np.arange(len(pred_times))
+    #         )
+        
+    #     for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
+    #     "evaluating baselines"
+    #     ):
+    #         baseline_data = baseline_data[0]
+           
+
+    #         if args.graph_list_report_path != "":
+    #             pred_graph_list = split_temporal_graph_to_digraph_list(
+    #                 baseline_data,
+    #                 np.arange(len(pred_times))
+    #             )
+    #             graph_list_matrixs = evaluate_graph_snapshots(
+    #                 gt_graph_list,
+    #                 pred_graph_list
+    #             )
+                
+    #             graph_list_matrixs["model"] = f"{baseline_name}"
+    #             results_snapshot.append(graph_list_matrixs)
+    
+    #     if args.graph_list_report_path != "":
+    #         output_path = args.graph_list_report_path
+    #         dir = os.path.dirname(output_path)
+    #         if not os.path.exists(dir):
+    #             os.makedirs(dir)
+    #         df = pd.DataFrame(results_snapshot)
+    #         df.to_csv(output_path)
+    #         dfs_snapshot.append(df)
+
+    
+    #     # 如果也有snapshot结果，可以单独保存
+    #     if dfs_snapshot:  # 如果有graph_list_report结果
+    #         df_snapshot_all = pd.concat(dfs_snapshot, ignore_index=True)
+    #         snapshot_output_path = args.graph_list_report_path
+    #         dir = os.path.dirname(snapshot_output_path)
+    #         if dir and not os.path.exists(dir):
+    #             os.makedirs(dir)
+    #         df_snapshot_all.to_csv(snapshot_output_path, index=False)
+    #         print(f"All snapshot results saved to {snapshot_output_path}")
+
     if args.graph_list_report_path != "":
         
-        args.cut_off_baseline = "time"
+        args.cut_off_baseline = "edge"
         
         results = []
         results_snapshot = []
         test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
             = get_baseline_graphs(args)
         test_data = test_data[0]
-        pred_times = unique_times[-pred_len:]
-       
-        if args.graph_list_report_path != "":
-            gt_graph_list = split_temporal_graph_to_digraph_list(
-                test_data,
-                pred_times
-                # np.arange(len(pred_times))
-            )
-        
+        test_nx_graph = temporal_data_to_nx_graph(test_data)
         for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
         "evaluating baselines"
         ):
             baseline_data = baseline_data[0]
-           
+            baseline_nx_graph = temporal_data_to_nx_graph(baseline_data)
 
             if args.graph_list_report_path != "":
-                pred_graph_list = split_temporal_graph_to_digraph_list(
-                    baseline_data,
-                    np.arange(len(pred_times))
-                )
                 graph_list_matrixs = evaluate_graph_snapshots(
-                    gt_graph_list,
-                    pred_graph_list
+                    [test_nx_graph],
+                    [baseline_nx_graph]
                 )
                 
                 graph_list_matrixs["model"] = f"{baseline_name}"

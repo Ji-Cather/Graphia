@@ -146,23 +146,24 @@ if __name__ == "__main__":
     # )
 
 
-    edge_all_metrics = [
-        "GF","CF","PD","DA","IQ","CR","average","label_acc","ROUGE_L","BERTScore_F1"
-    ]
-    edge_part_metrics = [
-        "average","label_acc","ROUGE_L","BERTScore_F1"
-    ]
-    df["average"] = np.array(df["average"].values)*5
-    # Generate LaTeX
-    latex_code = df_to_latex_multidataset(
-        df,
-        group_col='dataset',
-        model_col='model',
-        metric_order=edge_part_metrics,
-        caption=args.caption,
-        label=args.label,
-    )
+    # edge_all_metrics = [
+    #     "GF","CF","PD","DA","IQ","CR","average"
+    # ]
+    # # edge_part_metrics = [
+    # #     "average","label_acc","ROUGE_L","BERTScore_F1"
+    # # ]
+    # df["average"] = np.array(df["average"].values)*5
+    # # Generate LaTeX
+    # latex_code = df_to_latex_multidataset(
+    #     df,
+    #     group_col='dataset',
+    #     model_col='model',
+    #     metric_order=edge_all_metrics,
+    #     caption=args.caption,
+    #     label=args.label,
+    # )
 
+    output_path = output_path.replace("merged_edge_matrix", "merged_edge_matrix_all")
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(latex_code)
 

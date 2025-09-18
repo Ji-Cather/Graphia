@@ -14,7 +14,7 @@ python  -m LLMGGen.convert_prompt_csv --phase "j2c" \
 
 
 # for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech; do
-for data_name in imdb propagate_large_cn; do
+for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech imdb propagate_large_cn; do
 
     export data_name
     
@@ -72,9 +72,9 @@ for data_name in imdb propagate_large_cn; do
         --pred_ratio 0.15 \
         --split test \
         --cm_order True\
-        --cut_off_baseline edge \
-        --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix.csv
-
+        --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix.csv \
+        --graph_list_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_list.csv 
+        
     python -m LLMGGen.eval_utils.eval_src_edges \
         --data_root $data_root \
         --data_name $data_name \
@@ -82,7 +82,6 @@ for data_name in imdb propagate_large_cn; do
         --pred_ratio 0.15 \
         --split test \
         --cm_order True\
-        --cut_off_baseline edge \
         --node_msg \
         --edge_msg \
         --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix_msg.csv

@@ -51,7 +51,7 @@ def get_snapshot_graph(path,
         min_time = initial_time if df['t'].min() < initial_time else df['t'].min()
         max_time = cut_time if df['t'].max() > cut_time else df['t'].max()
         
-        df_sub = df[(df['t'] >= min_time) & (df['t'] < max_time)]
+        df_sub = df[(df['t'] >= min_time) & (df['t'] <= max_time)]
         
     data = TemporalData(src=torch.tensor(df_sub['src'].values, dtype=torch.long), 
                         dst=torch.tensor(df_sub['dst'].values, dtype=torch.long), 
@@ -60,6 +60,8 @@ def get_snapshot_graph(path,
         msg_path = os.path.join(os.path.dirname(path),
                                  "edge_embeddings.npy")
         msg = np.load(msg_path)
+        # Subset the message data to match the same rows as df_sub
+        msg = msg[df_sub.index.values]
         data.msg = msg 
 
     # 对于DGGen，dymond，tigger，timestamp应该是day/year * timewindow
@@ -199,7 +201,7 @@ def get_baseline_graphs(args):
                                                         baseline_data.msg], axis=1), dtype=torch.float32)
                     baseline_data.msg = msg
                     baseline_graphs[baseline_name] = [baseline_data]
-            except:
+            except Exception as e:
                 pass
     else:
         raise ValueError(f"Invalid cut_off_baseline: {args.cut_off_baseline}")

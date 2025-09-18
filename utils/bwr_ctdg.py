@@ -882,13 +882,14 @@ class BWRCTDGDataset:
                            good_metric:list = ['text',
                                            'NSM']):
         agent_text_parts = []
-        source_metrics = {
-                        'SF': interaction_cache[src_id]['frequency'],
-                        'AFN': (
-                            int(np.mean(list(interaction_cache[src_id]['count'].values())))
-                            if interaction_cache[src_id]['count'] else 0
-                        )
-                    }
+        if len(good_metric) > 1:
+            source_metrics = {
+                            'SF': interaction_cache[src_id]['frequency'],
+                            'AFN': (
+                                int(np.mean(list(interaction_cache[src_id]['count'].values())))
+                                if interaction_cache[src_id]['count'] else 0
+                            )
+                        }
         if 'text' in good_metric:
             agent_text_parts.append(f"- Text: {self.node_text[src_id]}")
 
@@ -943,6 +944,8 @@ class BWRCTDGDataset:
 
         history_dst_edge_texts = [f"<edge>{edge_text}</edge>" for edge_text in history_dst_edge_texts]
         return "\n\n".join(history_dst_edge_texts)
+    
+    
 
     def get_memory_dst(self, 
                        src_id, 
@@ -956,6 +959,43 @@ class BWRCTDGDataset:
         
         return history_dst_node_texts
     
+
+    def get_memory_seq_dst(self, src_id, dst_id):
+        """
+        获取源节点在截止时间之前与特定目标节点的交互历史，用于序列化推荐任务
+        只考虑cut off time之前src和指定dst的交互edge id
+        
+        Args:
+            src_id: 源节点ID
+            dst_id: 目标节点ID
+        
+        Returns:
+            str: 格式化的交互历史文本
+        """
+        # 获取截止时间
+        cut_off_time = self.unique_times[self.input_len]
+        
+        # 创建掩码：在截止时间之前且目标节点匹配
+        mask = (self.ctdg.t < cut_off_time) & (self.ctdg.dst == dst_id) & (self.ctdg.src == src_id)
+        
+        # 获取匹配的边的索引
+        matched_edge_ids = self.ctdg.edge_id[mask]
+        
+        # 如果没有匹配的边，返回空字符串
+        if len(matched_edge_ids) == 0:
+            return ""
+        
+        # 获取这些边的文本
+        history_edge_texts = self.edge_text[matched_edge_ids]
+        
+        # 如果只有一个文本，转换为列表
+        if isinstance(history_edge_texts, str):
+            history_edge_texts = [history_edge_texts]
+        
+        # 格式化文本
+        formatted_texts = [f"<edge>{text}</edge>" for text in history_edge_texts]
+        
+        return "\n\n".join(formatted_texts)
     
     def get_neighbor_dst(self, 
                          src_id, 

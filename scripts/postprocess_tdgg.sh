@@ -8,7 +8,7 @@ python  -m LLMGGen.convert_prompt_csv --phase "j2c" \
 
 # Loop through datasets
 # for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech; do
-for data_name in weibo_daily weibo_tech; do
+for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech; do
     export data_name
     
     # Set paths and parameters based on data_name
@@ -56,7 +56,10 @@ for data_name in weibo_daily weibo_tech; do
 
     # query: tdgg
     # for llm in $tdgg_rl_query_model
-    for llm in Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
+    # for llm in Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
+    for llm in $tdgg_rl_query_model qwen3 qwen3_sft Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
+    # for llm in $tdgg_rl_query_model qwen3 qwen3_sft Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
+    # for llm in DeepSeek-R1-Distill-Qwen-32B
     do
         export llm=${llm}
         export llm_save_root=LLMGGen/results/${llm}
@@ -71,18 +74,19 @@ for data_name in weibo_daily weibo_tech; do
 
     # edge: tdgg
     # for llm in $tdgg_rl_edge_model qwen3 qwen3_sft
-    for llm in Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
-    do
-        export llm=${llm}
-        export llm_save_root=LLMGGen/results/${llm}
-        export report_save_root=LLMGGen/reports/${llm}
-        # for mode in process_tf eval_tf
-        for mode in process_tf eval_tf
-        do
-            export mode=${mode}
-            bash LLMGGen/scripts/postprocess_edge_loop.sh
-        done
-    done
+    # for llm in Mixtral-8x7B-v0.1 Meta-Llama-3.1-70B-Instruct Qwen3-32B DeepSeek-R1-Distill-Qwen-32B
+    # for llm in DeepSeek-R1-Distill-Qwen-32B
+    # do
+    #     export llm=${llm}
+    #     export llm_save_root=LLMGGen/results/${llm}
+    #     export report_save_root=LLMGGen/reports/${llm}
+    #     # for mode in process_tf eval_tf
+    #     for mode in process_tf eval_tf
+    #     do
+    #         export mode=${mode}
+    #         bash LLMGGen/scripts/postprocess_edge_loop.sh
+    #     done
+    # done
 
 done
 

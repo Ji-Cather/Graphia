@@ -169,7 +169,7 @@ def df_to_latex_combined_groups(df,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate combined LaTeX table with customizable per-group metrics.")
     parser.add_argument("--input", type=str, required=True, help="Path to input CSV file")
-    parser.add_argument("--hub-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for Hub group")
+    parser.add_argument("--hub-metrics", type=str, nargs="+", default=["fail_rate", "hit@100", "recall@100"], help="Metrics for Hub group")
     parser.add_argument("--normal-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for Normal group")
     parser.add_argument("--all-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for All group")
     parser.add_argument("--caption", type=str, default="Retrieval Performance Across Groups", help="Table caption")
