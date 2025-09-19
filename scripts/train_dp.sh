@@ -142,22 +142,22 @@ data_root=/data/jiarui_ji/llmggen/LLMGGen/data
 #   --rescale
 
 
-python -m LLMGGen.train_node_regression_v2 \
-  --data_name cora \
-  --data_root ${data_root} \
-  --model_name InformerDecoder \
-  --num_runs 1 \
-  --gpu 0 \
-  --num_epochs 50 \
-  --batch_size 1 \
-  --test_interval_epochs 5 \
-  --pred_ratio 0.15 \
-  --time_window 31536000 \
-  --bwr 2048 \
-  --use_feature bert \
-  --cm_order \
-  --quantile_mapping \
-  --rescale
+# python -m LLMGGen.train_node_regression_v2 \
+#   --data_name cora \
+#   --data_root ${data_root} \
+#   --model_name InformerDecoder \
+#   --num_runs 1 \
+#   --gpu 0 \
+#   --num_epochs 50 \
+#   --batch_size 1 \
+#   --test_interval_epochs 5 \
+#   --pred_ratio 0.15 \
+#   --time_window 31536000 \
+#   --bwr 2048 \
+#   --use_feature bert \
+#   --cm_order \
+#   --quantile_mapping \
+#   --rescale
 
 
 # python -m LLMGGen.test_src_degree \
@@ -169,3 +169,36 @@ python -m LLMGGen.train_node_regression_v2 \
 #   --use_feature bert \
 #   --cm_order \
 #   --rescale
+
+
+python -m LLMGGen.train_node_regression_v3 \
+  --data_name 8days_dytag_small_text_en \
+  --data_root ${data_root} \
+  --num_runs 1 \
+  --pred_ratio 0.15 \
+  --time_window 31536000 \
+  --bwr 2048 \
+  --use_feature bert \
+  --cm_order 
+
+python -m LLMGGen.train_node_regression_v3 \
+  --data_name weibo_daily \
+  --data_root ${data_root} \
+  --num_runs 1 \
+  --gpu 0 \
+  --pred_ratio 0.15 \
+  --time_window 86400 \
+  --bwr 2048 \
+  --use_feature bert \
+  --cm_order
+
+python -m LLMGGen.train_node_regression_v3 \
+  --data_name weibo_tech \
+  --data_root ${data_root} \
+  --num_runs 1 \
+  --gpu 0 \
+  --pred_ratio 0.15 \
+  --time_window 86400 \
+  --bwr 2048 \
+  --use_feature bert \
+  --cm_order

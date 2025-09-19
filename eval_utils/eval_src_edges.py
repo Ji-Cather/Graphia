@@ -670,6 +670,7 @@ if __name__ == "__main__":
     parser.add_argument('--edge_msg', action="store_true", help='是否使用边消息')
     parser.add_argument('--graph_report_path', type=str, default="", help='graph_matrix.csv')
     parser.add_argument('--graph_list_report_path', type=str, default="", help='graph_list_matrix.csv')
+    parser.add_argument('--graph_text_matrix_path', type=str, default="", help='graph_text_matrix.csv')
 
 
     args = parser.parse_args()

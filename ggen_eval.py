@@ -4,17 +4,20 @@ import pandas as pd
 from torch_geometric.data import TemporalData
 import numpy as np
 import re
-
+from tqdm import tqdm
+from transformers import AutoTokenizer, AutoModel
 from .utils.bwr_ctdg import (BWRCTDGALLDataset, 
                             BWRCTDGDataset, 
                             Dataset_Template)
 from .eval_utils import get_gt_data
 from .eval_utils.eval_src_edges import (get_ctdg_edges,
                                         split_temporal_graph_to_digraph_list,
+                                        temporal_data_to_nx_graph,
                                         evaluate_edges,
                                         evaluate_graphs,
                                         evaluate_nodes,
-                                        evaluate_graph_snapshots
+                                        evaluate_graph_snapshots,
+                                        
                                         )
 
 
@@ -27,9 +30,9 @@ def eval_graph_structure(
     gen_matrix = get_ctdg_edges(gen_graph, max_node_number)
     gt_matrix = get_ctdg_edges(gt_graph, max_node_number)
     
-    node_matrixs = evaluate_nodes(gt_matrix,
-                                    gen_matrix,
-                                    node_text = node_text)
+    # node_matrixs = evaluate_nodes(gt_matrix,
+    #                                 gen_matrix,
+    #                                 node_text = node_text)
     
     graph_matrixs = evaluate_graphs(gt_matrix,
                                     gen_matrix,
@@ -37,13 +40,8 @@ def eval_graph_structure(
                                     gen_graph,
                                     node_feature = node_feature)
                                     
-    
-    eval_matrixs = {
-        **node_matrixs,
-        **graph_matrixs
-    }
 
-    return eval_matrixs
+    return graph_matrixs
 
 
 def eval_graph_snapshot_structure(
@@ -55,16 +53,65 @@ def eval_graph_snapshot_structure(
     eval_matrixs = evaluate_graph_snapshots(split_gt_graphs, split_gen_graphs)
     return eval_matrixs
     
+def generate_bert_embeddings(texts, desc="Processing texts"):
+    """
+    Generate BERT embeddings for a list of texts using TinyBERT
     
+    Args:
+        texts (list): List of text strings to embed
+        desc (str): Description for progress bar
+    
+    Returns:
+        np.ndarray: Array of embeddings
+    """
+    # Load TinyBERT model and tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")
+    model = AutoModel.from_pretrained("prajjwal1/bert-tiny")
+    model.eval()
+    
+    # Generate embeddings
+    embeddings = []
+    with torch.no_grad():
+        for text in tqdm(texts, desc=desc):
+            # Handle potential NaN or empty texts
+            if pd.isna(text) or text == "":
+                text = " "
+            inputs = tokenizer(str(text), return_tensors="pt", padding=True, truncation=True, max_length=128)
+            outputs = model(**inputs)
+            # Use [CLS] token output as text representation
+            embedding = outputs.last_hidden_state[:, 0, :]
+            embeddings.append(embedding)
+    
+    return torch.cat(embeddings, dim=0).cpu().numpy()
     
 def get_gen_data(df: pd.DataFrame,
                 data_ctdg: BWRCTDGDataset,
+                data_name: str,
+                df_path: str,
                 node_msg: bool = False,
                 edge_msg: bool = False,
                 ) -> TemporalData:
     # 初始化边列表
     edges = []
-    for _, row in df.iterrows():
+    edge_msg_path = os.path.join(os.path.dirname(df_path), 
+                                 "edge_embeddings.npy")
+    if edge_msg and not os.path.exists(edge_msg_path):
+        output_dir = os.path.dirname(edge_msg_path)
+        os.makedirs(output_dir, exist_ok=True)
+        template = Dataset_Template[data_name]
+    
+        edge_text_template = template["edge_text_template"]
+        edge_text_cols = template["edge_text_cols"]
+        df['text'] = df.apply(
+        lambda row: edge_text_template.format(**{col: row[col] if col in row else '' for col in edge_text_cols}), 
+        axis=1
+    )
+    
+        edge_embeddings = generate_bert_embeddings(df['text'].tolist(), desc="Processing edge texts")
+        # df['msg'] = edge_embeddings
+        np.save(edge_msg_path, edge_embeddings)
+
+    for idx, row in df.iterrows():
         src_id = int(float(row["src_idx"]))
         dst_id = int(float(row["dst_idx"]))
         t = int(float(row["t"]))
@@ -80,11 +127,11 @@ def get_gen_data(df: pd.DataFrame,
             msg = torch.tensor(np.concatenate([data_ctdg.node_feature[src_id], 
                                                 data_ctdg.node_feature[dst_id]]), dtype=torch.float32)
         elif edge_msg and not node_msg:
-            msg = torch.tensor(row["edge_msg"], dtype=torch.float32)
+            msg = torch.tensor(edge_embeddings[idx], dtype=torch.float32)
         else:
             msg = torch.tensor(np.concatenate([data_ctdg.node_feature[src_id], 
                                                 data_ctdg.node_feature[dst_id],
-                                                row["edge_msg"]
+                                                edge_embeddings[idx]
                                                 ]), dtype=torch.float32)
             
         edge = {
@@ -165,6 +212,8 @@ def main(args):
                             edge_msg=args.edge_msg)
         gen_graph = get_gen_data(df,
                                 data_ctdg,
+                                args.data_name,
+                                df_path=args.graph_result_path,
                                 node_msg=args.node_msg,
                                 edge_msg=args.edge_msg)
         
@@ -192,18 +241,14 @@ def main(args):
                             edge_msg=args.edge_msg)
         gen_graph = get_gen_data(df,
                                 data_ctdg,
+                                args.data_name,
+                                df_path=args.graph_result_path,
                                 node_msg=args.node_msg,
                                 edge_msg=args.edge_msg)
-        pred_times = data_ctdg.unique_times[-data_ctdg.pred_len:]
-        gt_graph_snapshots = split_temporal_graph_to_digraph_list(
-            gt_graph, 
-            pred_times)
-        gen_graph_snapshots = split_temporal_graph_to_digraph_list(
-            gen_graph, 
-            pred_times)
-        
-        eval_matrixs = evaluate_graph_snapshots(gt_graph_snapshots, 
-                                                gen_graph_snapshots)
+        gt_graph_nx = temporal_data_to_nx_graph(gt_graph)
+        gen_graph_nx = temporal_data_to_nx_graph(gen_graph)
+        eval_matrixs = evaluate_graph_snapshots([gt_graph_nx], 
+                                                [gen_graph_nx])
         
         print(f"评估指标: {eval_matrixs}")
         eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")

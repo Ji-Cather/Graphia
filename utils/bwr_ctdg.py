@@ -51,7 +51,7 @@ Dataset_Template = {
         },
         "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
     },
-    "propagate_large": {
+    "propagate_large_cn": {
         "description": "This network represent market network of taoke members; nodes are members, edges are item propagations.",
         "edge_text_template": """
 <ts_str>{ts_str}</ts_str>

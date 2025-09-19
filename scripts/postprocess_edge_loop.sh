@@ -19,8 +19,7 @@ set_inf_paths() {
     edge_save_path="${llm_save_root}/${data_name}/test/inference/edge_text_prompt.csv"
     edge_result_path="${llm_save_root}/${data_name}/test/inference/edge_ggen.csv"
     edge_text_result_path="${llm_save_root}/${data_name}/test/inference/edge_text_eval_prompt.csv"
-    edge_report_path="${report_save_root}/${data_name}/test/inference/edge_matrix.csv"
-    edge_list_report_path="${report_save_root}/${data_name}/test/inference/edge_list_matrix.csv"
+    graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix_msg.csv"
 }
 
 # === Main Logic ===
@@ -104,9 +103,10 @@ case "$mode" in
             --pred_ratio 0.15 \
             --split test \
             --cm_order True \
-            --edge_result_path "$edge_result_path" \
-            --edge_report_path "$edge_report_path" \
-            --edge_text_result_path "$edge_text_result_path"
+            --node_msg \
+            --edge_msg \
+            --graph_result_path "$edge_result_path" \
+            --graph_report_path "$graph_report_path" 
         ;;
     "help"|"")
         echo "Usage: mode={process_tf|eval_tf|process_inf|eval_inf}"

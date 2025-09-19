@@ -862,7 +862,8 @@ def main_infer_edge(query_result_path, dx_src_path: str = None):
     query_examples_all_result = pd.read_csv(query_result_path)
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.model_config_name}/{args.data_name}/{args.split}/inference')
 
-    print(prompt_dir)
+    if "seq_deg" in dx_src_path:
+        prompt_file = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
     os.makedirs(prompt_dir, exist_ok=True)
 
     data_ctdg_loader = DataLoader(data_ctdg, 
@@ -951,7 +952,10 @@ def main_infer_dst(dx_src_path: str = None):
     sim_std = sim.std()
     
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
-    
+    if "seq_deg" in dx_src_path:
+        prompt_file = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
+
+
     os.makedirs(prompt_dir, exist_ok=True)
     
     data_ctdg_loader = DataLoader(data_ctdg, 
@@ -2647,7 +2651,9 @@ def main_seq_dst(args):
             query_all_examples.extend(seq_dst_examples)
     
     # 保存结果
-    pd.DataFrame(query_all_examples).to_csv(os.path.join(prompt_dir, 'seq_dst.csv'), index=False)
+    query_all_examples = pd.DataFrame(query_all_examples) 
+    query_all_examples['domain'] = 'dst_rule'
+    query_all_examples.to_csv(os.path.join(prompt_dir, 'seq_dst.csv'), index=False)
 
 
 def main_seq_edge(args):
@@ -2718,8 +2724,12 @@ def main_seq_edge(args):
                 
                 query_all_examples.extend(seq_edge_examples)
     
+    
+
     # 保存结果
-    pd.DataFrame(query_all_examples).to_csv(os.path.join(prompt_dir, 'seq_edge.csv'), index=False)
+    query_all_examples = pd.DataFrame(query_all_examples) 
+    query_all_examples['domain'] = 'edge_text_rule'
+    query_all_examples.to_csv(os.path.join(prompt_dir, 'seq_edge.csv'), index=False)
 
 
 def process_single_seq_dst(
@@ -2767,7 +2777,8 @@ def process_single_seq_dst(
         examples.append({
             "prompt": prompt,
             "src_id": src_id,
-            "dst_id": dst_id
+            "dst_id": dst_id,
+            "domain": "dst_rule"
         })
     
     return examples
@@ -2833,6 +2844,7 @@ def process_single_seq_edge(
         })
     
     return examples
+
 
     
 
