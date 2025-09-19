@@ -15,13 +15,15 @@ dx_seq_model_name=seq_deg
 # dx_seq_model_name=seq_deg
 
 # weibo_daily
-# export data_name=weibo_daily
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+export data_name=weibo_daily
+dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+dx_seq_model_name=seq_deg
 
-# # weibo_tech
-# export data_name=weibo_tech
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-# dx_seq_model_name=seq_deg
+
+# weibo_tech
+export data_name=weibo_tech
+dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+dx_seq_model_name=seq_deg
 
 ## imdb
 # export data_name=imdb

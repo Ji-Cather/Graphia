@@ -171,15 +171,15 @@ data_root=/data/jiarui_ji/llmggen/LLMGGen/data
 #   --rescale
 
 
-python -m LLMGGen.train_node_regression_v3 \
-  --data_name 8days_dytag_small_text_en \
-  --data_root ${data_root} \
-  --num_runs 1 \
-  --pred_ratio 0.15 \
-  --time_window 31536000 \
-  --bwr 2048 \
-  --use_feature bert \
-  --cm_order 
+# python -m LLMGGen.train_node_regression_v3 \
+#   --data_name 8days_dytag_small_text_en \
+#   --data_root ${data_root} \
+#   --num_runs 1 \
+#   --pred_ratio 0.15 \
+#   --time_window 31536000 \
+#   --bwr 2048 \
+#   --use_feature bert \
+#   --cm_order 
 
 python -m LLMGGen.train_node_regression_v3 \
   --data_name weibo_daily \
