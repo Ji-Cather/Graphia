@@ -863,7 +863,7 @@ def main_infer_edge(query_result_path, dx_src_path: str = None):
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.model_config_name}/{args.data_name}/{args.split}/inference')
 
     if "seq_deg" in dx_src_path:
-        prompt_file = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
+        prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
     os.makedirs(prompt_dir, exist_ok=True)
 
     data_ctdg_loader = DataLoader(data_ctdg, 
@@ -953,7 +953,7 @@ def main_infer_dst(dx_src_path: str = None):
     
     prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/inference')
     if "seq_deg" in dx_src_path:
-        prompt_file = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
+        prompt_dir = os.path.join(args.save_root,f'prompts/{args.data_name}/{args.split}/seq_inference')
 
 
     os.makedirs(prompt_dir, exist_ok=True)
@@ -1974,7 +1974,7 @@ def process_query_result(
     df_summary = df_summary[sorted_cols]
     # 设置索引名
     df_summary.index.name = 'Group'
-    df_summary["fail_rate"] = round(1 - (fail_count / query_examples_all_result.shape[0]), 4)
+    df_summary["format_rate"] = round(1 - (fail_count / query_examples_all_result.shape[0]), 4)
     result_dir = os.path.dirname(args.query_result_path).replace("LLMGGen/results", "LLMGGen/reports")
     os.makedirs(result_dir,exist_ok=True)
     
@@ -2425,14 +2425,18 @@ def process_edge_result(args,
     
     
     edges_all = pd.concat(edges_all,ignore_index=True) # 含有src,dst,t,edge_id,edge_label,edge_text
-    eval_prompts = get_eval_edge_text_prompt(edges_all, dataset_name=bwr_ctdg.data_name)
-    prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
-    os.makedirs(prompt_dir, exist_ok=True)
-    eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
-    edges_all.to_csv(args.edge_result_path, index=False)
     
-    print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
-    print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
+    if teacher_forcing:
+        eval_prompts = get_eval_edge_text_prompt(edges_all, dataset_name=bwr_ctdg.data_name)
+        prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
+        os.makedirs(prompt_dir, exist_ok=True)
+
+
+        eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
+        edges_all.to_csv(args.edge_result_path, index=False)
+        
+        print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
+        print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
 
 
 def process_edge_result_idgg(args,
@@ -2521,23 +2525,25 @@ def process_edge_result_idgg(args,
         edge_examples_all_result["gt_label"] = edge_examples_all_result["gt_label"].map(lambda x: [int(x)])
         edge_examples_all_result.rename(columns={"output": "gt_text"}, inplace=True)
     else:
-        for idx, row in edge_examples_all_result.iterrows():
-            src_idx = int(float(row["src_idx"]))
-            src_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.src==src_idx]
-            src_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.src==src_idx]
-            dst_idx = int(float(row["dst_idx"]))
-            dst_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.dst==dst_idx]
-            dst_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.dst==dst_idx]
-            future_edge_idxs = [*src_future_edge_idxs, *dst_future_edge_idxs]
-            if len(future_edge_idxs) > 3:
-                future_edge_idxs = future_edge_idxs[:3]
-            future_edge_labels = [*src_future_labels, *dst_future_labels]
-            if len(future_edge_labels) > 3:
-                future_edge_labels = future_edge_labels[:3]
-            gt_edge_text_ref = "\n".join([f"{data_ctdg.ctdg.edge_text[edge_idx]}" for edge_idx in future_edge_idxs])
-            gt_edge_lable_ref = future_edge_labels
-            edge_examples_all_result.loc[idx, "gt_label"] = gt_edge_lable_ref
-            edge_examples_all_result.loc[idx, "gt_text"] = gt_edge_text_ref
+        # for idx, row in edge_examples_all_result.iterrows():
+        #     src_idx = int(float(row["src_idx"]))
+        #     src_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.src==src_idx]
+        #     src_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.src==src_idx]
+        #     dst_idx = int(float(row["dst_idx"]))
+        #     dst_future_labels = data_ctdg.ctdg.label[data_ctdg.ctdg.dst==dst_idx]
+        #     dst_future_edge_idxs = data_ctdg.ctdg.edge_id[data_ctdg.ctdg.dst==dst_idx]
+        #     future_edge_idxs = [*src_future_edge_idxs, *dst_future_edge_idxs]
+        #     if len(future_edge_idxs) > 3:
+        #         future_edge_idxs = future_edge_idxs[:3]
+        #     future_edge_labels = [*src_future_labels, *dst_future_labels]
+        #     if len(future_edge_labels) > 3:
+        #         future_edge_labels = future_edge_labels[:3]
+        #     gt_edge_text_ref = "\n".join([f"{data_ctdg.edge_text[edge_idx]}" for edge_idx in future_edge_idxs])
+        #     gt_edge_lable_ref = future_edge_labels
+        #     edge_examples_all_result.loc[idx, "gt_label"] = list(int(x) for x in gt_edge_lable_ref)
+        #     edge_examples_all_result.loc[idx, "gt_text"] = gt_edge_text_ref
+
+        pass
         
         
     for edge_id, group in tqdm(grouped_df, "processing edge examples"):
@@ -2563,8 +2569,10 @@ def process_edge_result_idgg(args,
             
             row["edge_label"] = candidate_edge_labels["label"]
             row["edge_text"] = Dataset_Template[environment_data['data_name']]['edge_text_template'].format_map(row.to_dict())
-            row = row[["src_idx", "dst_idx", "t", "prompt", "edge_id", "edge_label", "edge_text", "gt_label", "gt_text"]]
-
+            try:
+                row = row[["src_idx", "dst_idx", "t", "prompt", "edge_id", "edge_label", "edge_text", "gt_label", "gt_text"]]
+            except:
+                row = row[["src_idx", "dst_idx", "t", "prompt", "edge_id", "edge_label", "edge_text"]]
            
             score = rewarder.reward(np.array([row["src_idx"]]),
                                     np.array([row["dst_idx"]]),
@@ -2575,17 +2583,17 @@ def process_edge_result_idgg(args,
         # 按照score对candidate_dst_ids_all进行排序，由高到低
         candidate_edge_labels_all.sort(key=lambda x: x[1], reverse=True)
         edges_all.append(candidate_edge_labels_all[0][0])
-    
-    
     edges_all = pd.concat(edges_all,ignore_index=True) # 含有src,dst,t,edge_id,edge_label,edge_text
-    eval_prompts = get_eval_edge_text_prompt(edges_all, dataset_name=bwr_ctdg.data_name)
-    prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
-    os.makedirs(prompt_dir, exist_ok=True)
-    eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
     edges_all.to_csv(args.edge_result_path, index=False)
     
-    print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
-    print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
+    if teacher_forcing:    
+        eval_prompts = get_eval_edge_text_prompt(edges_all, dataset_name=bwr_ctdg.data_name)
+        prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
+        os.makedirs(prompt_dir, exist_ok=True)
+        eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
+        
+        print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
+        print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
     
 
 

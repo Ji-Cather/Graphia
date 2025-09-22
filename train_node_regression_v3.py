@@ -40,7 +40,7 @@ def fit_daily_edge_count_distribution(train_data_ctdg):
     
     for i in range(len(ctdg.src)):
         t = ctdg.t[i].item()
-        day = int(t // 1)  # 假设时间是以天为单位，或者需要根据实际情况调整
+        day = int(t // train_data_ctdg.time_window)  # 假设时间是以天为单位，或者需要根据实际情况调整
         
         if day not in daily_edge_counts:
             daily_edge_counts[day] = 0
@@ -233,17 +233,16 @@ if __name__ == "__main__":
     save_dir = f"saved_results_deg/seq_deg/{args.data_name}"
     os.makedirs(save_dir, exist_ok=True)
     
+    print(degree_array.sum(axis=0), degree_array.shape)
+      # 计算有多少不同的非0 src_id
+    non_zero_src_count = np.count_nonzero(degree_array.sum(axis=1))
+    print(f"Number of unique non-zero src_ids: {non_zero_src_count}")
     # 保存度数分布参数和numpy数组
     degree_save_path = os.path.join(save_dir, 'test_degree.pt')
     torch.save({
         'degree': torch.from_numpy(degree_array),  # 形状: [num_src_nodes, num_days]
         'unique_degree': torch.from_numpy(degree_array)  # 形状: [num_src_nodes, num_days]
     }, degree_save_path)
-    
-    print(f"Degree distribution saved to {degree_save_path}")
-    print(f"Degree array shape: {degree_array.shape}")
-    print(f"Max src id: {degree_distribution['max_src_id']}")
-    
     # 显示一些示例数据
     print("\nSample degree data (first 5 src_ids, first 3 days):")
     print(degree_array[:5, :3])

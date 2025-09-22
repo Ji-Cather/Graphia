@@ -181,24 +181,44 @@ data_root=/data/jiarui_ji/llmggen/LLMGGen/data
 #   --use_feature bert \
 #   --cm_order 
 
-python -m LLMGGen.train_node_regression_v3 \
-  --data_name weibo_daily \
-  --data_root ${data_root} \
-  --num_runs 1 \
-  --gpu 0 \
-  --pred_ratio 0.15 \
-  --time_window 86400 \
-  --bwr 2048 \
-  --use_feature bert \
-  --cm_order
+# python -m LLMGGen.train_node_regression_v3 \
+#   --data_name weibo_daily \
+#   --data_root ${data_root} \
+#   --num_runs 1 \
+#   --gpu 0 \
+#   --pred_ratio 0.15 \
+#   --time_window 86400 \
+#   --bwr 2048 \
+#   --use_feature bert \
+#   --cm_order
+
+# python -m LLMGGen.train_node_regression_v3 \
+#   --data_name weibo_tech \
+#   --data_root ${data_root} \
+#   --num_runs 1 \
+#   --gpu 0 \
+#   --pred_ratio 0.15 \
+#   --time_window 86400 \
+#   --bwr 2048 \
+#   --use_feature bert \
+#   --cm_order
+
+# python -m LLMGGen.train_node_regression_v3 \
+#   --data_name imdb \
+#   --data_root ${data_root} \
+#   --gpu 0 \
+#   --pred_ratio 0.15 \
+#   --time_window 31536000 \
+#   --bwr 2048 \
+#   --use_feature bert \
+#   --cm_order \
 
 python -m LLMGGen.train_node_regression_v3 \
-  --data_name weibo_tech \
+  --data_name propagate_large_cn \
   --data_root ${data_root} \
   --num_runs 1 \
-  --gpu 0 \
   --pred_ratio 0.15 \
   --time_window 86400 \
   --bwr 2048 \
   --use_feature bert \
-  --cm_order
+  --cm_order \

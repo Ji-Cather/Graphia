@@ -17,7 +17,7 @@ from .eval_utils.eval_src_edges import (get_ctdg_edges,
                                         evaluate_graphs,
                                         evaluate_nodes,
                                         evaluate_graph_snapshots,
-                                        
+                                        evaluate_graph_macro_phenomena
                                         )
 
 
@@ -110,7 +110,8 @@ def get_gen_data(df: pd.DataFrame,
         edge_embeddings = generate_bert_embeddings(df['text'].tolist(), desc="Processing edge texts")
         # df['msg'] = edge_embeddings
         np.save(edge_msg_path, edge_embeddings)
-
+    elif edge_msg:
+        edge_embeddings = np.load(edge_msg_path)
     for idx, row in df.iterrows():
         src_id = int(float(row["src_idx"]))
         dst_id = int(float(row["dst_idx"]))
@@ -148,7 +149,8 @@ def get_gen_data(df: pd.DataFrame,
     if not edge_msg and not node_msg:
         return TemporalData(src, dst, t)
     else:
-        return TemporalData(src=src, dst=dst, t=t, msg=msg)
+        msgs = torch.tensor(np.array([edge["msg"] for edge in edges]))
+        return TemporalData(src=src, dst=dst, t=t, msg=msgs)
     
     
 
@@ -167,13 +169,6 @@ def main(args):
         # force_reload=True
     )
     
-    environment_data = {
-            'dst_min': bwr_ctdg.dst_min,
-            'dst_max': bwr_ctdg.dst_max,
-            'bwr': bwr_ctdg.bwr,
-            'data_name': bwr_ctdg.data_name,
-            "description":Dataset_Template[bwr_ctdg.data_name]['description']
-        }
     
     # 假设not teacher forcing，这边要加入degree predictor结果的load    
     if args.split == 'train':
@@ -187,7 +182,7 @@ def main(args):
     
     if args.edge_report_path is not None:
         
-        if os.path.exists(args.edge_report_path):
+        if os.path.exists(args.edge_report_path) and os.path.exists(args.edge_text_result_path):
             report_edge_df = pd.read_csv(args.edge_report_path)
             edge_text_df = pd.read_csv(args.edge_text_result_path)
             edge_matrix = evaluate_edges(None, edge_text_df)
@@ -205,7 +200,7 @@ def main(args):
         os.makedirs(os.path.dirname(args.edge_report_path), exist_ok=True)
         report_edge_df.to_csv(args.edge_report_path)
     
-    if args.graph_result_path is not None:
+    if args.graph_report_path is not None:
         df = pd.read_csv(args.graph_result_path)
         gt_graph = get_gt_data(data_ctdg, 
                             node_msg=args.node_msg,
@@ -229,9 +224,8 @@ def main(args):
         print(f"评估指标: {eval_matrixs}")
         eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
         report_df = pd.DataFrame([eval_matrixs])
-        if args.graph_report_path is not None:
-            os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
-            report_df.to_csv(args.graph_report_path)
+        os.makedirs(os.path.dirname(args.graph_report_path), exist_ok=True)
+        report_df.to_csv(args.graph_report_path)
 
     if args.graph_list_report_path is not None:
 
@@ -253,11 +247,35 @@ def main(args):
         print(f"评估指标: {eval_matrixs}")
         eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
         report_df = pd.DataFrame([eval_matrixs])
-        if args.graph_report_path is not None:
-            os.makedirs(os.path.dirname(args.graph_list_report_path), exist_ok=True)
-            report_df.to_csv(args.graph_list_report_path)
+       
+        os.makedirs(os.path.dirname(args.graph_list_report_path), exist_ok=True)
+        report_df.to_csv(args.graph_list_report_path)
    
-    
+    if args.graph_macro_report_path != "":
+        df = pd.read_csv(args.graph_result_path)
+        gt_graph = get_gt_data(data_ctdg, 
+                            node_msg=args.node_msg,
+                            edge_msg=args.edge_msg)
+        gen_graph = get_gen_data(df,
+                                data_ctdg,
+                                args.data_name,
+                                df_path=args.graph_result_path,
+                                node_msg=args.node_msg,
+                                edge_msg=args.edge_msg)
+        
+        eval_matrixs = evaluate_graph_macro_phenomena(
+            pred_data=gen_graph,
+            gt_data=gt_graph,
+            max_node_number=data_ctdg.node_feature.shape[0],
+            node_feature=data_ctdg.node_feature,
+        )
+        print(f"评估指标: {eval_matrixs}")
+        eval_matrixs["experiment_name"] = args.graph_result_path.replace(".csv", "")
+        report_df = pd.DataFrame([eval_matrixs])
+        os.makedirs(os.path.dirname(args.graph_macro_report_path), exist_ok=True)
+        report_df.to_csv(args.graph_macro_report_path)
+        
+        
     
 
 if __name__ == "__main__":
@@ -289,14 +307,15 @@ if __name__ == "__main__":
     # gen graph args
     parser.add_argument('--graph_result_path', type=str, default=None, help='ggen result path(query ggen)')
     parser.add_argument('--graph_report_path', type=str, default=None, help='graph result report path')
-    parser.add_argument('--graph_list_report_path', type=str, default=None, help='graph result report path')
+    parser.add_argument('--graph_list_report_path', type=str, default=None, help='graph list_result report path')
+    parser.add_argument('--graph_macro_report_path', type=str, default="", help='graph_macro_matrix.csv')
     
     # edge text eval args
     parser.add_argument('--edge_result_path', type=str, default=None, help='ggen result path(edge ggen)')
     parser.add_argument('--edge_text_result_path', type=str, default=None, help='edge text eval result path')
     parser.add_argument('--edge_report_path', type=str, default=None, help='edge text eval result report path')
     
-
+   
 
     args = parser.parse_args()
     

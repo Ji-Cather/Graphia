@@ -333,8 +333,8 @@ if __name__ == "__main__":
     # DGGB_root = 'data/DGGB'
     # save_root = 'data/weibo_tech'
     # process_weibo_tech(DGGB_root, save_root)
-    # process_weibo_daily("LLMGGen/data/weibo_daily/raw", "LLMGGen/data/weibo_daily/raw")
-    # process_weibo_tech("LLMGGen/data/weibo_tech/raw", "LLMGGen/data/weibo_tech/raw")
-    # process_imdb("LLMGGen/data/imdb/raw", "LLMGGen/data/imdb/raw",sample_rate=0.5, start_year=1970,end_year =2000)
+    process_weibo_daily("LLMGGen/data/weibo_daily/raw", "LLMGGen/data/weibo_daily/raw")
+    process_weibo_tech("LLMGGen/data/weibo_tech/raw", "LLMGGen/data/weibo_tech/raw")
+    process_imdb("LLMGGen/data/imdb/raw", "LLMGGen/data/imdb/raw",sample_rate=0.5, start_year=1970,end_year =2000)
     # process_cora("LLMGGen/data/cora/raw", "LLMGGen/data/cora/raw")
-    process_wikilife("LLMGGen/data/wikilife/raw", "LLMGGen/data/wikilife/raw",sample_rate=0.1)
+    # process_wikilife("LLMGGen/data/wikilife/raw", "LLMGGen/data/wikilife/raw",sample_rate=0.1)

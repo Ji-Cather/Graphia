@@ -149,9 +149,9 @@ def evaluate_hubs(gt_edge_matrix, pred_edge_matrix, k=20):
 
 
     return {
-        f"precision@20%N": precision,
-        f"f1@20%N": f1,
-        f"auc@20%N": auc
+        f"precision": precision,
+        f"f1": f1,
+        f"auc": auc
     }
 
 
@@ -159,26 +159,67 @@ def evaluate_hubs(gt_edge_matrix, pred_edge_matrix, k=20):
 
 
 def jl_all_graph(reference_graph: TemporalData, 
-                 generated_graph: TemporalData):
+                 generated_graph: TemporalData,
+                 max_events: float = 1e6):
+    """
+    计算JL度量，如果超过max_events则进行截断
     
-
+    参数:
+    reference_graph: 参考图
+    generated_graph: 生成图
+    max_events: 最大事件数阈值
+    
+    返回:
+    dict: 评估结果
+    """
+    
     # Initialize the evaluator
-    evaluator = JLEvaluator(max_events=1e6)
+    evaluator = JLEvaluator(max_events=max_events)
     
     reference_graph = copy.deepcopy(reference_graph)
     generated_graph = copy.deepcopy(generated_graph)
+    
+    # 检查是否需要截断参考图
+    if len(reference_graph.src) > max_events:
+        # 随机采样max_events个事件
+        indices = np.random.choice(len(reference_graph.src), int(max_events), replace=False)
+        indices = np.sort(indices)  # 保持时间顺序
+        reference_graph = TemporalData(
+            src=reference_graph.src[indices].clone().detach(),
+            dst=reference_graph.dst[indices].clone().detach(),
+            t=reference_graph.t[indices].clone().detach(),
+            msg=reference_graph.msg[indices].clone().detach() if hasattr(reference_graph, 'msg') and reference_graph.msg is not None else torch.zeros((len(indices), 1), dtype=torch.double)
+        )
+    
+    # 检查是否需要截断生成图
+    if len(generated_graph.src) > max_events:
+        # 随机采样max_events个事件
+        indices = np.random.choice(len(generated_graph.src), int(max_events), replace=False)
+        indices = np.sort(indices)  # 保持时间顺序
+        generated_graph = TemporalData(
+            src=generated_graph.src[indices].clone().detach(),
+            dst=generated_graph.dst[indices].clone().detach(),
+            t=generated_graph.t[indices].clone().detach(),
+            msg=generated_graph.msg[indices].clone().detach() if hasattr(generated_graph, 'msg') and generated_graph.msg is not None else torch.zeros((len(indices), 1), dtype=torch.double)
+        )
+    
     if 'msg' not in reference_graph.keys() and 'msg' not in generated_graph.keys():
         reference_graph.msg = torch.zeros((reference_graph.src.shape[0], 1), dtype=torch.double)
         generated_graph.msg = torch.zeros((generated_graph.src.shape[0], 1), dtype=torch.double)
     
-    reference_graph = TemporalData(src=reference_graph.src.clone().detach(), 
-                                   dst=reference_graph.dst.clone().detach(), 
-                                   t=reference_graph.t.clone().detach(),
-                                   msg=reference_graph.msg.clone().detach())
-    generated_graph = TemporalData(src=generated_graph.src.clone().detach(), 
-                                   dst=generated_graph.dst.clone().detach(), 
-                                   t=generated_graph.t.clone().detach(),
-                                   msg=generated_graph.msg.clone().detach())
+    reference_graph = TemporalData(
+        src=reference_graph.src.clone().detach(), 
+        dst=reference_graph.dst.clone().detach(), 
+        t=reference_graph.t.clone().detach(),
+        msg=reference_graph.msg.clone().detach()
+    )
+    generated_graph = TemporalData(
+        src=generated_graph.src.clone().detach(), 
+        dst=generated_graph.dst.clone().detach(), 
+        t=generated_graph.t.clone().detach(),
+        msg=generated_graph.msg.clone().detach()
+    )
+    
     # Create input dictionary
     input_dict = {
         'reference': reference_graph,
@@ -186,37 +227,90 @@ def jl_all_graph(reference_graph: TemporalData,
     }
 
     # Evaluate and get results
-    result_dict = evaluator.eval(input_dict)
-    return result_dict
+    try:
+        result_dict = evaluator.eval(input_dict)
+        return result_dict
+    except Exception as e:
+        print(f"Error in JL evaluation: {e}")
+        return {}
+
 
 
 def graph_embedding_all_graph(reference_graph, 
                               generated_graph,
-                              node_feature:np.ndarray=None):
+                              node_feature:np.ndarray=None,
+                              max_events: float = 1e6):
+    """
+    计算图嵌入度量，如果超过max_events则进行截断
     
-    evaluator = GraphEmbeddingEvaluator(max_events=1e6)
+    参数:
+    reference_graph: 参考图
+    generated_graph: 生成图
+    node_feature: 节点特征
+    max_events: 最大事件数阈值
+    
+    返回:
+    dict: 评估结果
+    """
+    
+    evaluator = GraphEmbeddingEvaluator(max_events=max_events)
     reference_graph = copy.deepcopy(reference_graph)
     generated_graph = copy.deepcopy(generated_graph)
+    
+    # 检查是否需要截断参考图
+    if len(reference_graph.src) > max_events:
+        # 随机采样max_events个事件
+        indices = np.random.choice(len(reference_graph.src), int(max_events), replace=False)
+        indices = np.sort(indices)  # 保持时间顺序
+        reference_graph = TemporalData(
+            src=reference_graph.src[indices].clone().detach(),
+            dst=reference_graph.dst[indices].clone().detach(),
+            t=reference_graph.t[indices].clone().detach(),
+            msg=reference_graph.msg[indices].clone().detach() if hasattr(reference_graph, 'msg') and reference_graph.msg is not None else torch.zeros((len(indices), 1), dtype=torch.double)
+        )
+    
+    # 检查是否需要截断生成图
+    if len(generated_graph.src) > max_events:
+        # 随机采样max_events个事件
+        indices = np.random.choice(len(generated_graph.src), int(max_events), replace=False)
+        indices = np.sort(indices)  # 保持时间顺序
+        generated_graph = TemporalData(
+            src=generated_graph.src[indices].clone().detach(),
+            dst=generated_graph.dst[indices].clone().detach(),
+            t=generated_graph.t[indices].clone().detach(),
+            msg=generated_graph.msg[indices].clone().detach() if hasattr(generated_graph, 'msg') and generated_graph.msg is not None else torch.zeros((len(indices), 1), dtype=torch.double)
+        )
+    
     if 'msg' not in reference_graph.keys() and 'msg' not in generated_graph.keys():
         reference_graph.msg = torch.zeros((reference_graph.src.shape[0], 1), dtype=torch.double)
         generated_graph.msg = torch.zeros((generated_graph.src.shape[0], 1), dtype=torch.double)
     
-    reference_graph = TemporalData(src=reference_graph.src.clone().detach(), 
-                                   dst=reference_graph.dst.clone().detach(), 
-                                   t=reference_graph.t.clone().detach(),
-                                   msg=reference_graph.msg.clone().detach())
-    generated_graph = TemporalData(src=generated_graph.src.clone().detach(), 
-                                   dst=generated_graph.dst.clone().detach(), 
-                                   t=generated_graph.t.clone().detach(),
-                                   msg=generated_graph.msg.clone().detach())
+    reference_graph = TemporalData(
+        src=reference_graph.src.clone().detach(), 
+        dst=reference_graph.dst.clone().detach(), 
+        t=reference_graph.t.clone().detach(),
+        msg=reference_graph.msg.clone().detach()
+    )
+    generated_graph = TemporalData(
+        src=generated_graph.src.clone().detach(), 
+        dst=generated_graph.dst.clone().detach(), 
+        t=generated_graph.t.clone().detach(),
+        msg=generated_graph.msg.clone().detach()
+    )
+    
     input_dict = {
         'reference': reference_graph,
         'reference_node': node_feature,
         'generated': generated_graph,
         'generated_node': node_feature
     }
-    result_dict = evaluator.eval(input_dict)
-    return result_dict
+    
+    try:
+        result_dict = evaluator.eval(input_dict)
+        return result_dict
+    except Exception as e:
+        print(f"Error in Graph Embedding evaluation: {e}")
+        return {}
 
 
 def evaluate_graphs(gt_edge_matrix, 
@@ -236,16 +330,23 @@ def evaluate_graphs(gt_edge_matrix,
 
     graph_metrics.update({f"{k}_hub": v for k, v in pred_result.items()})
 
+    pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
+                               k=100)
+
+    graph_metrics.update({f"{k}_hub": v for k, v in pred_result.items()})
+
     edge_overlap = np.sum((gt_edge_matrix > 0) & (pred_edge_matrix > 0)) / np.sum(gt_edge_matrix > 0)
     graph_metrics['edge_overlap'] = edge_overlap
 
-    try:
-        jl_result = jl_all_graph(gt_graph, pred_graph)
-        graph_embedding_result = graph_embedding_all_graph(gt_graph, pred_graph, node_feature)
-        graph_metrics.update(jl_result)
-        graph_metrics.update(graph_embedding_result)
-    except:
-        pass
+    if "msg" in pred_graph.keys():
+        try:
+            jl_result = jl_all_graph(gt_graph, pred_graph)
+            graph_embedding_result = graph_embedding_all_graph(gt_graph, pred_graph, node_feature)
+            graph_metrics.update(jl_result)
+            graph_metrics.update(graph_embedding_result)
+        except Exception as e:
+            print(e)
+            pass
     
     graph_metrics.update(abs_result)
 
@@ -646,7 +747,230 @@ def temporal_data_to_nx_graph(temporal_data: TemporalData,
     return graph
 
 
+import numpy as np
+import networkx as nx
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.cluster import SpectralClustering
+from collections import defaultdict
+from typing import Dict, List, Tuple, Optional
 
+def detect_echo_chambers_simple(
+    graph: nx.Graph,
+    node_features: np.ndarray,
+    similarity_threshold: float = 0.5,
+    min_chamber_size: int = 3
+) -> Dict:
+    """
+    最简化的回音室检测方法（修复索引问题版，基于最大连通分量）
+    
+    参数:
+    graph: NetworkX图对象
+    node_features: [N, D] array, 每个节点的特征向量（如BERT embedding）
+    similarity_threshold: 特征相似度阈值
+    min_chamber_size: 回音室的最小节点数
+    
+    返回:
+    dict: 包含回音室检测结果的字典
+
+    https://www.pnas.org/doi/10.1073/pnas.1517441113
+    """
+    
+    # 获取最大连通分量
+    if graph.number_of_nodes() == 0:
+        return {
+            'echo_chamber_ratio': 0.0,
+            'num_chambers': 0,
+            'avg_chamber_size': 0.0
+        }
+    
+    # 如果是无向图，找到最大的连通组件；如果是有向图，找到最大的弱连通组件
+    if isinstance(graph, nx.DiGraph):
+        connected_components = nx.weakly_connected_components(graph)
+    else:
+        connected_components = nx.connected_components(graph)
+    
+    # 找到最大的连通组件
+    largest_component = max(connected_components, key=len)
+    subgraph = graph.subgraph(largest_component)
+    
+    # 获取子图中的节点列表
+    subgraph_nodes = list(subgraph.nodes())
+    n_subgraph_nodes = len(subgraph_nodes)
+    
+    if n_subgraph_nodes == 0:
+        return {
+            'echo_chamber_ratio': 0.0,
+            'num_chambers': 0,
+            'avg_chamber_size': 0.0
+        }
+    
+    # 限制节点数量以提高计算效率
+    max_nodes = min(1000, n_subgraph_nodes)
+    if n_subgraph_nodes > max_nodes:
+        # 从最大连通分量中随机选择节点
+        selected_node_indices = np.random.choice(n_subgraph_nodes, max_nodes, replace=False)
+        selected_nodes = [subgraph_nodes[i] for i in selected_node_indices]
+    else:
+        selected_nodes = subgraph_nodes
+    
+    # 获取选中节点的特征
+    # 需要将节点ID映射到node_features的索引
+    selected_features_indices = np.array(selected_nodes)  # 假设节点ID直接对应特征索引
+    selected_features = node_features[selected_features_indices]
+    
+    # 计算节点间的特征相似度
+    feature_similarities = cosine_similarity(selected_features)
+    
+    # 创建节点索引映射
+    selected_node_to_idx = {node: idx for idx, node in enumerate(selected_nodes)}
+    
+    # 创建邻接矩阵（只针对选中的节点）
+    adj_matrix = np.zeros((len(selected_nodes), len(selected_nodes)), dtype=bool)
+    for edge in subgraph.edges():
+        node1, node2 = edge[0], edge[1]
+        if node1 in selected_node_to_idx and node2 in selected_node_to_idx:
+            idx1, idx2 = selected_node_to_idx[node1], selected_node_to_idx[node2]
+            adj_matrix[idx1, idx2] = True
+            if not isinstance(subgraph, nx.DiGraph):  # 无向图需要设置对称位置
+                adj_matrix[idx2, idx1] = True
+    
+    # 余下代码保持不变...
+    # 4. 找到相似节点
+    similarity_mask = feature_similarities > similarity_threshold
+    # 减去对角线（自己与自己的相似性）
+    np.fill_diagonal(similarity_mask, False)
+    
+    # 统计每个节点的相似节点数
+    similar_node_counts = np.sum(similarity_mask, axis=1)
+    
+    # 5. 找到候选回音室
+    candidate_mask = similar_node_counts >= min_chamber_size
+    candidate_indices = np.where(candidate_mask)[0]
+    
+    if len(candidate_indices) == 0:
+        return {
+            'echo_chamber_ratio': 0.0,
+            'num_chambers': 0,
+            'avg_chamber_size': 0.0
+        }
+    
+    # 6. 计算所有候选回音室的内部连接密度
+    echo_chamber_nodes = 0
+    total_chambers = 0
+    echo_chamber_all = []
+    
+    # 根据公式计算每个节点的回音室指标
+    echo_chamber_indicators = np.zeros(len(selected_nodes))
+    
+    for i in range(len(selected_nodes)):
+        # 获取与节点i相似的节点（基于特征相似度）
+        similar_nodes = np.where(feature_similarities[i] > similarity_threshold)[0]
+        
+        if len(similar_nodes) > 0:
+            # 计算在邻接矩阵中实际连接的比例
+            actual_connections = np.sum(adj_matrix[i, similar_nodes])
+            connection_ratio = actual_connections / len(similar_nodes)
+            
+            # 如果连接比例超过阈值δ，则该节点属于回音室
+            if connection_ratio > 0.01:  # 这里的0.1对应公式中的δ
+                echo_chamber_indicators[i] = 1
+    
+    # 计算回音室比例
+    echo_chamber_ratio = np.mean(echo_chamber_indicators)
+    
+    return {
+        'echo_chamber_ratio': echo_chamber_ratio,
+        'num_chambers': int(np.sum(echo_chamber_indicators)),
+        'avg_chamber_size': np.sum(echo_chamber_indicators) / len(selected_nodes) if len(selected_nodes) > 0 else 0
+    }
+
+def evaluate_echo_chamber_effect(
+    gt_graph: nx.Graph,
+    gen_graph: nx.Graph,
+    node_features: np.ndarray
+) -> Dict:
+    """
+    评估真实图与生成图中的回音室效应差异
+    
+    参数:
+    gt_graph: 真实图 (NetworkX格式)
+    gen_graph: 生成图 (NetworkX格式)
+    node_features: 节点特征（BERT embedding）
+    node_texts: 节点文本
+    
+    返回:
+    dict: 回音室效应评估结果
+    """
+    
+    # 检测真实图中的回音室
+    gt_echo_chambers = detect_echo_chambers_simple(gt_graph, node_features)
+    
+    # 检测生成图中的回音室
+    gen_echo_chambers = detect_echo_chambers_simple(gen_graph, node_features)
+    
+    # 比较回音室效应
+    echo_chamber_metrics = {
+        'echo_chamber_ratio_diff': abs(gt_echo_chambers['echo_chamber_ratio'] - gen_echo_chambers['echo_chamber_ratio']),
+        'num_chambers_diff': abs(gt_echo_chambers['num_chambers'] - gen_echo_chambers['num_chambers']),
+        'avg_chamber_size_diff': abs(gt_echo_chambers['avg_chamber_size'] - gen_echo_chambers['avg_chamber_size'])
+    }
+    
+    return echo_chamber_metrics
+
+
+import powerlaw 
+def calculate_power_law_fitness(graph: nx.Graph,
+                                xmin = 2):
+    degree_list = [graph.degree(n) for n in graph.nodes()]
+    results = powerlaw.Fit(list(degree_list), 
+                            discrete=True,
+                                # fit_method="KS",
+                                xmin=xmin
+                                )
+    try:
+        alpha = results.power_law.alpha
+        sigma = results.power_law.sigma
+        D = results.power_law.D
+        
+    except:
+        D = 1.0 # default to upper bound of 
+
+    return D
+def evaluate_graph_macro_phenomena(
+    pred_data: TemporalData,
+    gt_data: TemporalData,
+    max_node_number: int,
+    node_feature: np.ndarray,
+):
+    pred_edge_matrix = get_ctdg_edges(pred_data, max_node_number)
+    gt_edge_matrix = get_ctdg_edges(gt_data, max_node_number)
+
+    graph_metrics = {}
+    gt_nx_graph = temporal_data_to_nx_graph(gt_data)
+
+    pred_nx_graph = temporal_data_to_nx_graph(pred_data)
+    echo_chambers = evaluate_echo_chamber_effect(gt_nx_graph,
+                                 pred_nx_graph,
+                                 node_feature)
+
+    graph_metrics.update( echo_chambers)    
+    pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
+                               k=int(0.2 * gt_edge_matrix.shape[0]))
+
+    graph_metrics.update({f"{k}@20%N_hub": v for k, v in pred_result.items()})
+
+    pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
+                               k=100)
+    
+    graph_metrics.update({f"{k}@100_hub": v for k, v in pred_result.items()})
+
+   
+
+    graph_metrics.update({
+        "D": calculate_power_law_fitness(pred_nx_graph)
+    })
+
+    return graph_metrics
 
 if __name__ == "__main__":  
 
@@ -670,7 +994,7 @@ if __name__ == "__main__":
     parser.add_argument('--edge_msg', action="store_true", help='是否使用边消息')
     parser.add_argument('--graph_report_path', type=str, default="", help='graph_matrix.csv')
     parser.add_argument('--graph_list_report_path', type=str, default="", help='graph_list_matrix.csv')
-    parser.add_argument('--graph_text_matrix_path', type=str, default="", help='graph_text_matrix.csv')
+    parser.add_argument('--graph_macro_report_path', type=str, default="", help='graph_macro_matrix.csv')
 
 
     args = parser.parse_args()
@@ -721,65 +1045,6 @@ if __name__ == "__main__":
             df_all.to_csv(output_path, index=False)  # 添加index=False避免重复索引
             print(f"All results saved to {output_path}")
 
-
-    # list
-    # if args.graph_list_report_path != "":
-        
-    #     args.cut_off_baseline = "time"
-        
-    #     results = []
-    #     results_snapshot = []
-    #     test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
-    #         = get_baseline_graphs(args)
-    #     test_data = test_data[0]
-    #     pred_times = unique_times[-pred_len:]
-       
-    #     if args.graph_list_report_path != "":
-    #         gt_graph_list = split_temporal_graph_to_digraph_list(
-    #             test_data,
-    #             pred_times
-    #             # np.arange(len(pred_times))
-    #         )
-        
-    #     for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
-    #     "evaluating baselines"
-    #     ):
-    #         baseline_data = baseline_data[0]
-           
-
-    #         if args.graph_list_report_path != "":
-    #             pred_graph_list = split_temporal_graph_to_digraph_list(
-    #                 baseline_data,
-    #                 np.arange(len(pred_times))
-    #             )
-    #             graph_list_matrixs = evaluate_graph_snapshots(
-    #                 gt_graph_list,
-    #                 pred_graph_list
-    #             )
-                
-    #             graph_list_matrixs["model"] = f"{baseline_name}"
-    #             results_snapshot.append(graph_list_matrixs)
-    
-    #     if args.graph_list_report_path != "":
-    #         output_path = args.graph_list_report_path
-    #         dir = os.path.dirname(output_path)
-    #         if not os.path.exists(dir):
-    #             os.makedirs(dir)
-    #         df = pd.DataFrame(results_snapshot)
-    #         df.to_csv(output_path)
-    #         dfs_snapshot.append(df)
-
-    
-    #     # 如果也有snapshot结果，可以单独保存
-    #     if dfs_snapshot:  # 如果有graph_list_report结果
-    #         df_snapshot_all = pd.concat(dfs_snapshot, ignore_index=True)
-    #         snapshot_output_path = args.graph_list_report_path
-    #         dir = os.path.dirname(snapshot_output_path)
-    #         if dir and not os.path.exists(dir):
-    #             os.makedirs(dir)
-    #         df_snapshot_all.to_csv(snapshot_output_path, index=False)
-    #         print(f"All snapshot results saved to {snapshot_output_path}")
-
     if args.graph_list_report_path != "":
         
         args.cut_off_baseline = "edge"
@@ -795,32 +1060,45 @@ if __name__ == "__main__":
         ):
             baseline_data = baseline_data[0]
             baseline_nx_graph = temporal_data_to_nx_graph(baseline_data)
+            graph_list_matrixs = evaluate_graph_snapshots(
+                [test_nx_graph],
+                [baseline_nx_graph]
+            )
+            
+            graph_list_matrixs["model"] = f"{baseline_name}"
+            results_snapshot.append(graph_list_matrixs)
 
-            if args.graph_list_report_path != "":
-                graph_list_matrixs = evaluate_graph_snapshots(
-                    [test_nx_graph],
-                    [baseline_nx_graph]
+        output_path = args.graph_list_report_path
+        dir = os.path.dirname(output_path)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        df = pd.DataFrame(results_snapshot)
+        df.to_csv(output_path)
+
+    if args.graph_macro_report_path != "":
+        
+        args.cut_off_baseline = "edge"
+        
+        test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
+            = get_baseline_graphs(args)
+        test_data = test_data[0]
+        results = []
+        for baseline_name, baseline_data in tqdm(baseline_data_map.items(),
+        "evaluating baselines"
+        ):
+            baseline_data = baseline_data[0]
+            graph_macro_matrixs = evaluate_graph_macro_phenomena(
+                    test_data,
+                    baseline_data,
+                    max_node_number,
+                    node_feature
                 )
-                
-                graph_list_matrixs["model"] = f"{baseline_name}"
-                results_snapshot.append(graph_list_matrixs)
-    
-        if args.graph_list_report_path != "":
-            output_path = args.graph_list_report_path
-            dir = os.path.dirname(output_path)
-            if not os.path.exists(dir):
-                os.makedirs(dir)
-            df = pd.DataFrame(results_snapshot)
-            df.to_csv(output_path)
-            dfs_snapshot.append(df)
+            graph_macro_matrixs["model"] = f"{baseline_name}"
+            results.append(graph_macro_matrixs)
 
-    
-        # 如果也有snapshot结果，可以单独保存
-        if dfs_snapshot:  # 如果有graph_list_report结果
-            df_snapshot_all = pd.concat(dfs_snapshot, ignore_index=True)
-            snapshot_output_path = args.graph_list_report_path
-            dir = os.path.dirname(snapshot_output_path)
-            if dir and not os.path.exists(dir):
-                os.makedirs(dir)
-            df_snapshot_all.to_csv(snapshot_output_path, index=False)
-            print(f"All snapshot results saved to {snapshot_output_path}")
+        output_path = args.graph_macro_report_path
+        dir = os.path.dirname(output_path)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        df = pd.DataFrame(results)
+        df.to_csv(output_path)

@@ -256,15 +256,6 @@ def evaluate_sampled_graphs(real_graphs: list[nx.Graph],sampled_graphs: list[nx.
 	# power law
 	actual_stats.update(cal_extra_metrics(real_graphs,2))
 	sampled_stats.update(cal_extra_metrics(sampled_graphs,2))
-	
-	# alpha
-	actual_cluster_hist = make_histograms(actual_stats["alpha"], num_bins=5)
-	sampled_cluster_hist = make_histograms(sampled_stats["alpha"], num_bins=5)
-	out["alpha_mmd"] = compute_maximum_mean_discrepancy(
-		actual_cluster_hist, sampled_cluster_hist, kernel_type=kernel_type, sigma=0.1,
-	)
-
-	
 
 	try:
 		# orbit

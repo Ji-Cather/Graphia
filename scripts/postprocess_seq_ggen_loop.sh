@@ -4,7 +4,7 @@
 data_root=${data_root:-"/path/to/data"}
 llm_save_root=${llm_save_root:-"/path/to/save"}
 report_save_root=${report_save_root:-"/path/to/report"}
-dx_src_root=${dx_src_root:-"/path/to/dx_src"}
+seq_dx_src_root=${seq_dx_src_root:-"/path/to/dx_src"}
 data_name=${data_name:-"your_dataset"}
 
 # === 函数：设置 teacher-forcing 路径 ===
@@ -15,13 +15,13 @@ set_tf_paths() {
     graph_report_path="${report_save_root}/${data_name}/test/teacher_forcing/graph_matrix.csv"
 }
 
-# === 函数：设置 inference 路径 ===
+# === 函数：设置 seq_inference 路径 ===
 set_inf_paths() {
     query_file_name="query_examples.csv"
-    query_save_path="${llm_save_root}/${data_name}/test/inference/${query_file_name}"
-    query_result_path="${llm_save_root}/${data_name}/test/inference/query_ggen.csv"
-    graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix.csv"
-    graph_list_report_path="${report_save_root}/${data_name}/test/inference/graph_list_matrix.csv"
+    query_save_path="${llm_save_root}/${data_name}/test/seq_inference/${query_file_name}"
+    query_result_path="${llm_save_root}/${data_name}/test/seq_inference/query_ggen.csv"
+    graph_report_path="${report_save_root}/${data_name}/test/seq_inference/graph_matrix.csv"
+    graph_list_report_path="${report_save_root}/${data_name}/test/seq_inference/graph_list_matrix.csv"
     graph_macro_report_path="${report_save_root}/${data_name}/test/inference/graph_macro_matrix.csv"
 }
 
@@ -75,7 +75,7 @@ case "$mode" in
             --pred_ratio 0.15 \
             --split test \
             --cm_order True \
-            --dx_src_path "${dx_src_root}/test_degree.pt" \
+            --dx_src_path "${seq_dx_src_root}/test_degree.pt" \
             --query_save_path "$query_save_path" \
             --query_result_path "$query_result_path" \
             --process_query_result
@@ -94,8 +94,8 @@ case "$mode" in
             --cm_order True \
             --graph_result_path "$query_result_path" \
             --graph_macro_report_path "$graph_macro_report_path" \
-            # --graph_report_path "$graph_report_path" \
-            # --graph_list_report_path "$graph_list_report_path" \
+            --graph_report_path "$graph_report_path" \
+            --graph_list_report_path "$graph_list_report_path" \
         ;;
     "help"|"")
         echo "Usage: mode={process_tf|eval_tf|process_inf|eval_inf}"

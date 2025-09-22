@@ -408,7 +408,7 @@ class BWRCTDGALLDataset(InMemoryDataset):
             plt.tight_layout()
             plt.savefig(plot_path)
             plt.close()
-        return node_feature_df, edge_feature_df
+        return node_order_mapping, node_feature_df, edge_feature_df
         
             
     def aggregate_df_text(self, df: pd.DataFrame, text_template: str, text_cols: list):
@@ -435,146 +435,148 @@ class BWRCTDGALLDataset(InMemoryDataset):
         
         if self.cm_order:
             os.makedirs(os.path.join(self.root,'plot'), exist_ok=True)
-            node_feature_df, edge_feature_df = self.cm_order_nodes(edge_feature_df, 
+            node_map, node_feature_df, edge_feature_df = self.cm_order_nodes(edge_feature_df, 
                                                                    node_feature_df, 
                                                                    test_edge_df_input,
                                                                    node_feature_df.shape[0],
                                     # plot_path=os.path.join(self.root,'plot', 'cm_order_nodes.png'),
                                     calculate_bwr = self.bwr==0)
+        torch.save(node_map, os.path.join(self.processed_dir, 
+                                              "node_map.pt"))
         
-        edge_feature_df['edge_id'] = np.arange(edge_feature_df.shape[0])
-        ## market network
-        node_feature_df = self.aggregate_df_text(node_feature_df, 
-                                                 text_template=Dataset_Template[self.data_name]["node_text_template"], 
-                                                 text_cols=Dataset_Template[self.data_name]["node_text_cols"])
-        # 在node_feature_df的开头添加一行
-        new_row = pd.DataFrame({'node_id': [0], 'text': [""]})
-        node_feature_df = pd.concat([new_row, node_feature_df], ignore_index=True)
-        node_feature_df.sort_values('node_id', inplace=True)
-        assert node_feature_df['node_id'].max() == node_feature_df.shape[0] - 1, f"invalid node_id"
-        edge_feature_df["ts_str"] = edge_feature_df["ts"].apply(lambda x: datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S'))
-        edge_feature_df = self.aggregate_df_text(edge_feature_df, 
-                                                 text_template=Dataset_Template[self.data_name]["edge_text_template"], 
-                                                 text_cols=Dataset_Template[self.data_name]["edge_text_cols"])
-        # Map unique values in 'labels' to int
-        label2int = {label: idx for idx, label in enumerate(edge_feature_df['label'].unique())}
-        edge_feature_df['label_int'] = edge_feature_df['label'].map(label2int)
-        label_texts = list(label2int.keys())
-        ## convert text to bert embedding
-        embed_feature_dim = 128
-        if self.use_feature == 'no':
-            edge_feature = np.zeros((edge_feature_df.shape[0], embed_feature_dim))
-            node_feature = np.zeros((node_feature_df.shape[0], embed_feature_dim))
-            label_feature = np.zeros((len(label_texts),embed_feature_dim))
-        elif self.use_feature == 'bert':
-            ## convert text to bert embedding
-            from transformers import AutoTokenizer, AutoModel
-            import torch.nn.functional as F
+        # edge_feature_df['edge_id'] = np.arange(edge_feature_df.shape[0])
+        # ## market network
+        # node_feature_df = self.aggregate_df_text(node_feature_df, 
+        #                                          text_template=Dataset_Template[self.data_name]["node_text_template"], 
+        #                                          text_cols=Dataset_Template[self.data_name]["node_text_cols"])
+        # # 在node_feature_df的开头添加一行
+        # new_row = pd.DataFrame({'node_id': [0], 'text': [""]})
+        # node_feature_df = pd.concat([new_row, node_feature_df], ignore_index=True)
+        # node_feature_df.sort_values('node_id', inplace=True)
+        # assert node_feature_df['node_id'].max() == node_feature_df.shape[0] - 1, f"invalid node_id"
+        # edge_feature_df["ts_str"] = edge_feature_df["ts"].apply(lambda x: datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S'))
+        # edge_feature_df = self.aggregate_df_text(edge_feature_df, 
+        #                                          text_template=Dataset_Template[self.data_name]["edge_text_template"], 
+        #                                          text_cols=Dataset_Template[self.data_name]["edge_text_cols"])
+        # # Map unique values in 'labels' to int
+        # label2int = {label: idx for idx, label in enumerate(edge_feature_df['label'].unique())}
+        # edge_feature_df['label_int'] = edge_feature_df['label'].map(label2int)
+        # label_texts = list(label2int.keys())
+        # ## convert text to bert embedding
+        # embed_feature_dim = 128
+        # if self.use_feature == 'no':
+        #     edge_feature = np.zeros((edge_feature_df.shape[0], embed_feature_dim))
+        #     node_feature = np.zeros((node_feature_df.shape[0], embed_feature_dim))
+        #     label_feature = np.zeros((len(label_texts),embed_feature_dim))
+        # elif self.use_feature == 'bert':
+        #     ## convert text to bert embedding
+        #     from transformers import AutoTokenizer, AutoModel
+        #     import torch.nn.functional as F
 
-            # 加载TinyBERT模型和分词器
-            tokenizer = AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")
-            model = AutoModel.from_pretrained("prajjwal1/bert-tiny")
-            model.eval()
+        #     # 加载TinyBERT模型和分词器
+        #     tokenizer = AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")
+        #     model = AutoModel.from_pretrained("prajjwal1/bert-tiny")
+        #     model.eval()
 
-            # 处理节点文本特征
-            node_texts = node_feature_df['text'].tolist()
-            node_embeddings = []
+        #     # 处理节点文本特征
+        #     node_texts = node_feature_df['text'].tolist()
+        #     node_embeddings = []
             
-            with torch.no_grad():
-                for text in tqdm(node_texts, desc="Processing node texts"):
-                    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
-                    outputs = model(**inputs)
-                    # 使用[CLS]标记的输出作为文本表示
-                    embedding = outputs.last_hidden_state[:, 0, :]
-                    node_embeddings.append(embedding)
+        #     with torch.no_grad():
+        #         for text in tqdm(node_texts, desc="Processing node texts"):
+        #             inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
+        #             outputs = model(**inputs)
+        #             # 使用[CLS]标记的输出作为文本表示
+        #             embedding = outputs.last_hidden_state[:, 0, :]
+        #             node_embeddings.append(embedding)
             
-            node_feature = torch.cat(node_embeddings, dim=0).cpu().numpy()
+        #     node_feature = torch.cat(node_embeddings, dim=0).cpu().numpy()
 
-            # 处理边文本特征
-            edge_texts = edge_feature_df['text'].tolist()
-            edge_embeddings = []
+        #     # 处理边文本特征
+        #     edge_texts = edge_feature_df['text'].tolist()
+        #     edge_embeddings = []
             
-            with torch.no_grad():
-                for text in tqdm(edge_texts, desc="Processing edge texts"):
-                    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
-                    outputs = model(**inputs)
-                    embedding = outputs.last_hidden_state[:, 0, :]
-                    edge_embeddings.append(embedding)
+        #     with torch.no_grad():
+        #         for text in tqdm(edge_texts, desc="Processing edge texts"):
+        #             inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
+        #             outputs = model(**inputs)
+        #             embedding = outputs.last_hidden_state[:, 0, :]
+        #             edge_embeddings.append(embedding)
             
-            edge_feature = torch.cat(edge_embeddings, dim=0).cpu().numpy()
+        #     edge_feature = torch.cat(edge_embeddings, dim=0).cpu().numpy()
 
 
             
-            label_embeddings = []
-            with torch.no_grad():
-                for text in tqdm(label_texts, desc="Processing label texts"):
-                    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
-                    outputs = model(**inputs)
-                    embedding = outputs.last_hidden_state[:, 0, :]
-                    label_embeddings.append(embedding)
+        #     label_embeddings = []
+        #     with torch.no_grad():
+        #         for text in tqdm(label_texts, desc="Processing label texts"):
+        #             inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=128)
+        #             outputs = model(**inputs)
+        #             embedding = outputs.last_hidden_state[:, 0, :]
+        #             label_embeddings.append(embedding)
             
-            label_feature = torch.cat(label_embeddings, dim=0).cpu().numpy()
+        #     label_feature = torch.cat(label_embeddings, dim=0).cpu().numpy()
 
-        else:
-            raise ValueError(f"Invalid use_feature: {self.use_feature}")
+        # else:
+        #     raise ValueError(f"Invalid use_feature: {self.use_feature}")
         
         
         
-        train_edge_id = edge_feature_df[edge_feature_df["ts"]<=unique_times[train_cut_id]]['edge_id']
-        val_edge_id = edge_feature_df[(edge_feature_df["ts"] >= unique_times[val_start_id]) & 
-                              (edge_feature_df["ts"] <= unique_times[val_cut_id])]['edge_id']
-        test_edge_id = edge_feature_df[(edge_feature_df["ts"] >= unique_times[test_start_id]) ]['edge_id']
+        # train_edge_id = edge_feature_df[edge_feature_df["ts"]<=unique_times[train_cut_id]]['edge_id']
+        # val_edge_id = edge_feature_df[(edge_feature_df["ts"] >= unique_times[val_start_id]) & 
+        #                       (edge_feature_df["ts"] <= unique_times[val_cut_id])]['edge_id']
+        # test_edge_id = edge_feature_df[(edge_feature_df["ts"] >= unique_times[test_start_id]) ]['edge_id']
         
-        edge_feature_df = edge_feature_df.set_index('edge_id')
+        # edge_feature_df = edge_feature_df.set_index('edge_id')
         
-        for edge_id, mode, unique_times_split in zip([train_edge_id, val_edge_id, test_edge_id, edge_feature_df.index], \
-            ["train", "val", "test", "all"], [unique_times[:train_cut_id], 
-                                              unique_times[val_start_id:val_cut_id], 
-                                              unique_times[test_start_id:], unique_times]):
-            # Sort edge_id to ensure temporal order
-            edge_id = edge_id.sort_values()
-            ctdg = TemporalData(
-                src=torch.tensor(edge_feature_df['src'][edge_id].values, dtype=torch.long),
-                dst=torch.tensor(edge_feature_df['dst'][edge_id].values, dtype=torch.long),
-                t=torch.tensor(edge_feature_df['ts'][edge_id].values, dtype=torch.long),
-                label=torch.tensor(edge_feature_df['label_int'][edge_id].values, dtype=torch.long),
-                edge_id_all=torch.tensor(edge_id.values, dtype=torch.long),
-                edge_id=torch.arange(len(edge_id)) # 相对的位置
-            )
-            assert label_texts[ctdg.label[0]] in edge_feature_df.iloc[edge_id]['text'].values[0],\
-            "incorrect edge order!!"
-            if mode == "train":
-                exist_node = np.unique(np.concatenate([ctdg.src, ctdg.dst, np.array([0])]))
+        # for edge_id, mode, unique_times_split in zip([train_edge_id, val_edge_id, test_edge_id, edge_feature_df.index], \
+        #     ["train", "val", "test", "all"], [unique_times[:train_cut_id], 
+        #                                       unique_times[val_start_id:val_cut_id], 
+        #                                       unique_times[test_start_id:], unique_times]):
+        #     # Sort edge_id to ensure temporal order
+        #     edge_id = edge_id.sort_values()
+        #     ctdg = TemporalData(
+        #         src=torch.tensor(edge_feature_df['src'][edge_id].values, dtype=torch.long),
+        #         dst=torch.tensor(edge_feature_df['dst'][edge_id].values, dtype=torch.long),
+        #         t=torch.tensor(edge_feature_df['ts'][edge_id].values, dtype=torch.long),
+        #         label=torch.tensor(edge_feature_df['label_int'][edge_id].values, dtype=torch.long),
+        #         edge_id_all=torch.tensor(edge_id.values, dtype=torch.long),
+        #         edge_id=torch.arange(len(edge_id)) # 相对的位置
+        #     )
+        #     assert label_texts[ctdg.label[0]] in edge_feature_df.iloc[edge_id]['text'].values[0],\
+        #     "incorrect edge order!!"
+        #     if mode == "train":
+        #         exist_node = np.unique(np.concatenate([ctdg.src, ctdg.dst, np.array([0])]))
             
-            edge_has_new = ~(np.isin(ctdg.src, exist_node) & np.isin(ctdg.dst, exist_node))
-            node_has_new = ~ np.isin(np.arange(node_feature_df.shape[0]), exist_node)
+        #     edge_has_new = ~(np.isin(ctdg.src, exist_node) & np.isin(ctdg.dst, exist_node))
+        #     node_has_new = ~ np.isin(np.arange(node_feature_df.shape[0]), exist_node)
             
-            ctdg.new_node = torch.tensor(edge_has_new, dtype=torch.bool)
+        #     ctdg.new_node = torch.tensor(edge_has_new, dtype=torch.bool)
             
-            bwr_ctdg = BWRCTDGDataset(
-                bwr=self.bwr,
-                time_window=self.time_window,
-                unique_times=unique_times_split,
-                ctdg=ctdg,
-                new_node_mask=node_has_new,
-                node_feature=node_feature,
-                edge_feature=edge_feature[edge_id.values],
-                label_feature=label_feature,
-                node_text=node_feature_df['text'].values,
-                edge_text=edge_feature_df.iloc[edge_id]['text'].values,
-                label_text = label_texts,
-                input_len = input_len,
-                pred_len = pred_len
-            )
+        #     bwr_ctdg = BWRCTDGDataset(
+        #         bwr=self.bwr,
+        #         time_window=self.time_window,
+        #         unique_times=unique_times_split,
+        #         ctdg=ctdg,
+        #         new_node_mask=node_has_new,
+        #         node_feature=node_feature,
+        #         edge_feature=edge_feature[edge_id.values],
+        #         label_feature=label_feature,
+        #         node_text=node_feature_df['text'].values,
+        #         edge_text=edge_feature_df.iloc[edge_id]['text'].values,
+        #         label_text = label_texts,
+        #         input_len = input_len,
+        #         pred_len = pred_len
+        #     )
             
-            # # test
-            # from torch.utils.data import DataLoader
-            # data_loader = DataLoader(bwr_ctdg, batch_size=5, collate_fn=custom_collate)
-            # for batch in data_loader:
-            #     print(batch)
+        #     # # test
+        #     # from torch.utils.data import DataLoader
+        #     # data_loader = DataLoader(bwr_ctdg, batch_size=5, collate_fn=custom_collate)
+        #     # for batch in data_loader:
+        #     #     print(batch)
             
-            torch.save(bwr_ctdg, os.path.join(self.processed_dir, 
-                                              "bwr_ctdg_{mode}.pt".format(mode=mode)))
+        #     torch.save(bwr_ctdg, os.path.join(self.processed_dir, 
+        #                                       "bwr_ctdg_{mode}.pt".format(mode=mode)))
             
             
 from collections import defaultdict
@@ -1150,8 +1152,14 @@ if __name__ == "__main__":
     print(f"BWR: {bwr_ctdg.bwr}")
     print(f"Node feature: {bwr_ctdg.data.node_feature.shape}")
     print(f"Edge feature: {bwr_ctdg.data.edge_feature.shape}")
-    print(f"Input length: {bwr_ctdg.train_data.input_len}")
-    print(f"Prediction length: {bwr_ctdg.train_data.pred_len}")
+    print(f"Input Time length: {bwr_ctdg.train_data.input_len}")
+    print(f"Prediction Time length: {bwr_ctdg.train_data.pred_len}")
+    test_input_time = bwr_ctdg.test_data.unique_times[bwr_ctdg.test_data.input_len]
+    mask_pred = bwr_ctdg.data.ctdg.t < test_input_time
+    output_edge_ids = torch.concat(list(torch.tensor(v) for v in bwr_ctdg.test_data.output_edges_dict.values()))
+        
+    print(f"Input Edge length: {mask_pred.sum()}")
+    print(f"Prediction Edge length: {output_edge_ids.shape[0]}")
     print(f"Graph length: {bwr_ctdg.train_data.input_len+ 3*bwr_ctdg.train_data.pred_len}")
     print(f"Label Num: {bwr_ctdg.train_data.label_feature.shape[0]}")
     # 测试数据集的 src_node_degree 按照 N*T 对第0维求sum，求mean，max，min

@@ -16,7 +16,7 @@ set_tf_paths() {
 # === Functions: Set Inference Paths ===
 set_inf_paths() {
     query_result_path="${query_llm_save_root}/${data_name}/test/inference/query_ggen.csv"
-    edge_save_path="${llm_save_root}/${data_name}/test/inference/edge_text_prompt.csv"
+    edge_save_path="${llm_save_root}/${data_name}/test/inference/edge_text_examples.csv"
     edge_result_path="${llm_save_root}/${data_name}/test/inference/edge_ggen.csv"
     edge_text_result_path="${llm_save_root}/${data_name}/test/inference/edge_text_eval_prompt.csv"
     graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix_msg.csv"
