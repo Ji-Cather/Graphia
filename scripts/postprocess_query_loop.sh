@@ -22,7 +22,7 @@
 # #         --process_query_result \
 # #         --reward_sel gnn \
 # #         --gnn_model_name GraphMixer \
-# #         --gnn_save_model_path /data/oss_bucket_0/jjr/LLMGGen/lp_models/saved_models/GraphMixer/8days_dytag_small_text_en/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl
+# #         --gnn_save_model_path LLMGGen/lp_models/saved_models/GraphMixer/8days_dytag_small_text_en/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl
 
 # #     # python -m LLMGGen.src_edge_offline \
 # #     #     --data_root $data_root \
@@ -36,7 +36,7 @@
 # #     #     --process_edge_result \
 # #     #     --reward_sel gnn \
 # #     #     --gnn_model_name GraphMixer \
-# #     #     --gnn_save_model_path /data/oss_bucket_0/jjr/LLMGGen/ec_models/saved_models/GraphMixer/8days_dytag_small_text_en/edge_classification_GraphMixer_seed0bert/edge_classification_GraphMixer_seed0bert.pkl
+# #     #     --gnn_save_model_path LLMGGen/ec_models/saved_models/GraphMixer/8days_dytag_small_text_en/edge_classification_GraphMixer_seed0bert/edge_classification_GraphMixer_seed0bert.pkl
 
         
        

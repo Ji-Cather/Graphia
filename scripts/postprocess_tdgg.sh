@@ -1,10 +1,7 @@
 export data_root=LLMGGen/data
 export HF_ENDPOINT=https://hf-mirror.com
 
-## these code should be executed after llm inference
-python  -m LLMGGen.convert_prompt_csv --phase "j2c" \
-        --output_dir "/home/jijiarui.jjr/ROLL/LLMGGen/results" \
-        --root_dir "/data/oss_bucket_0/jjr/LLMGGen/results"
+
 
 # Loop through datasets
 # for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech imdb propagate_large_cn; do
@@ -104,7 +101,3 @@ for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech ; do
     done
 
 done
-
-# python  -m LLMGGen.convert_prompt_csv --phase "c2j" \
-#         --output_dir "/data/oss_bucket_0/jjr/LLMGGen/prompt_data" \
-#         --root_dir "/home/jijiarui.jjr/ROLL/LLMGGen/prompts"

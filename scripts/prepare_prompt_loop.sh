@@ -54,8 +54,3 @@ for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech; do
     #     --save_root ${save_root}
 done
 
-# 转换提示CSV（所有数据集处理完后执行一次）
-python -m LLMGGen.convert_prompt_csv \
-    --phase "c2j" \
-    --output_dir "/data/oss_bucket_0/jjr/LLMGGen/prompt_data" \
-    --root_dir "/home/jijiarui.jjr/ROLL/LLMGGen/prompts"

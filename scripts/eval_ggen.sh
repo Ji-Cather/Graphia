@@ -1,6 +1,6 @@
 
 # query graph
-data_root=/data/oss_bucket_0/jjr/LLMGGen
+data_root=LLMGGen/data
 data_name=8days_dytag_small_text_en
 dx_src_path=saved_results_deg/InformerDecoder_seed0_bwr1980_qmTrue_ufbert_cmTrue/${data_name}
 

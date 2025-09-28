@@ -1,18 +1,9 @@
-# export data_root=LLMGGen/data
-
-export data_root=/data/oss_bucket_0/jjr/LLMGGen
-
-
-
-
+export data_root=LLMGGen/data
 export HF_ENDPOINT=https://hf-mirror.com
 
 ## these code should be executed after llm inference
 ## these code should be executed after llm inference
 
-python  -m LLMGGen.convert_prompt_csv --phase "j2c" \
-        --output_dir "/home/jijiarui.jjr/ROLL/LLMGGen/results" \
-        --root_dir "/data/oss_bucket_0/jjr/LLMGGen/results"
 
 
 export data_name=8days_dytag_small_text_en
@@ -93,10 +84,6 @@ do
         bash LLMGGen/scripts/postprocess_edge_loop.sh
     done
 done
-# python  -m LLMGGen.convert_prompt_csv --phase "c2j" \
-#         --output_dir "/data/oss_bucket_0/jjr/LLMGGen/prompt_data" \
-#         --root_dir "/home/jijiarui.jjr/ROLL/LLMGGen/prompts"
-
 
 # # edge text eval result: tdgg
 # for llm in $tdgg_rl_edge_model qwen3 qwen3_sft 
