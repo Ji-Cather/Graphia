@@ -24,7 +24,14 @@ def plot_tdgg_radar(scores_file_path="LLMGGen/reports/tdgg_social_fidelity_score
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
+    model_rename_map = {
+        'qwen3': 'Qwen3-8b',
+        'qwen3_sft': 'Qwen3-8b-sft',
+        'DeepSeek-R1-Distill-Qwen-32B': 'DeepSeek-Q-32B',
+        'Meta-Llama-3.1-70B-Instruct': 'Llama3-70B'
+    }
+    df['model'] = df['model'].replace(model_rename_map)
     
     # 检查必要的列是否存在
     missing_columns = [col for col in metrics if col not in df.columns]
@@ -67,7 +74,7 @@ def plot_tdgg_radar(scores_file_path="LLMGGen/reports/tdgg_social_fidelity_score
         ax.set_ylim(0, 1)
         
         # 保存图片
-        output_path = Path(output_dir) / f"tdgg_radar_{dataset}.png"
+        output_path = Path(output_dir) / f"tdgg_radar_{dataset}.pdf"
         plt.tight_layout()
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -93,7 +100,7 @@ def plot_tdgg_radar_comparison(scores_file_path="LLMGGen/reports/tdgg_social_fid
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 获取所有唯一的模型
     all_models = df['model'].unique()
@@ -156,7 +163,7 @@ def plot_tdgg_radar_comparison(scores_file_path="LLMGGen/reports/tdgg_social_fid
     fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(0.9, 0.1))
     
     # 保存图片
-    output_path = Path(output_dir) / "tdgg_radar_comparison.png"
+    output_path = Path(output_dir) / "tdgg_radar_comparison.pdf"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -180,7 +187,7 @@ def plot_score_distributions(scores_file_path="LLMGGen/reports/tdgg_social_fidel
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 创建子图
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
@@ -193,7 +200,7 @@ def plot_score_distributions(scores_file_path="LLMGGen/reports/tdgg_social_fidel
         axes[idx].tick_params(axis='x', rotation=45)
     
     plt.tight_layout()
-    output_path = Path(output_dir) / "score_distributions.png"
+    output_path = Path(output_dir) / "score_distributions.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -219,7 +226,7 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 检查必要的列是否存在
     missing_columns = [col for col in metrics if col not in df.columns]
@@ -238,8 +245,12 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     avg_scores = df.groupby('model')[metrics].mean().reset_index()
     
     # 格式化指标名称（首字母大写，下划线变空格）
-    formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
-    
+    format_metric_map = {
+        "selection_score": r"$S_\text{sel}$",
+        "edge_score": r"$S_\text{edge}$",
+        "tdgg_social_fidelity_score": r"$S_\text{TDGG}$"
+    }
+    formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
     # 定义模型绘制顺序
     model_order = [
         'Qwen3-8b',
@@ -247,8 +258,8 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         'Qwen3-32B',
         'DeepSeek-R1-Distill-Qwen-32B',
         'Meta-Llama-3.1-70B-Instruct',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 按照指定顺序重新排列数据
@@ -280,8 +291,8 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         'Qwen3-32B': '#2ca02c',  # 森林绿 Forest Green - 自然系，表达增长
         'DeepSeek-R1-Distill-Qwen-32B': '#9467bd',  # 紫藤紫 Wisteria Purple - 优雅中性
         'Meta-Llama-3.1-70B-Instruct': '#f7b84d',  # 日落金 Sunset Gold - 明亮温暖
-        'LLMGGen-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
-        'LLMGGen': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
+        'Graphia-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
+        'Graphia': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
     }
     
     # 绘制每个模型的数据
@@ -294,7 +305,7 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         color = color_map.get(model_name, plt.cm.tab10(idx))
         
         # 设置线条属性
-        if model_name in ['LLMGGen-seq', 'LLMGGen']:
+        if model_name in ['Graphia-seq', 'Graphia']:
             linewidth = 4
             alpha = 1.0
             zorder = 10  # 确保在最上层
@@ -312,12 +323,12 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     
     # 添加标签
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(formatted_metrics, fontsize=13, fontweight='bold')
+    ax.set_xticklabels(formatted_metrics, fontsize=30, fontweight='bold')
     
     # 设置图表样式
     ax.set_ylim(0, 1)
     # 修改径向标签（0.2, 0.4等）的大小
-    ax.tick_params(axis='y', labelsize=12)  # 设置径向标签字体大小
+    ax.tick_params(axis='y', labelsize=24)   # 设置径向标签字体大小
     ax.grid(True, alpha=0.3)
     
     # 设置标题
@@ -325,15 +336,15 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     #           size=16, fontweight='bold', pad=30)
     
     # 添加图例（放在图表外部）
-    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), 
-               fontsize=16, frameon=True, fancybox=True, shadow=True)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), ncols = 2,
+               fontsize=22, frameon=True, fancybox=True, shadow=True)
     
     # 美化网格
     ax.spines['polar'].set_visible(False)
     ax.set_facecolor('#f8f9fa')
     
     # 保存图片
-    output_path = Path(output_dir) / "formatted_overall_tdgg_radar.png"
+    output_path = Path(output_dir) / "formatted_overall_tdgg_radar.pdf"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
@@ -361,7 +372,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 检查必要的列是否存在
     missing_columns = [col for col in metrics if col not in df.columns]
@@ -383,8 +394,8 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         'Qwen3-32B',
         'DeepSeek-R1-Distill-Qwen-32B',
         'Meta-Llama-3.1-70B-Instruct',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 定义颜色映射
@@ -394,8 +405,8 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         'Qwen3-32B': '#2ca02c',  # 森林绿 Forest Green - 自然系，表达增长
         'DeepSeek-R1-Distill-Qwen-32B': '#9467bd',  # 紫藤紫 Wisteria Purple - 优雅中性
         'Meta-Llama-3.1-70B-Instruct': '#f7b84d',  # 日落金 Sunset Gold - 明亮温暖
-        'LLMGGen-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
-        'LLMGGen': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
+        'Graphia-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
+        'Graphia': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
     }
     
     # 为每个数据集绘制雷达图
@@ -428,8 +439,12 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         fig.patch.set_facecolor('white')
         
         # 格式化指标名称（首字母大写，下划线变空格）
-        formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
-        
+        format_metric_map = {
+        "selection_score": r"$S_\text{sel}$",
+        "edge_score": r"$S_\text{edge}$",
+        "tdgg_social_fidelity_score": r"$S_\text{TDGG}$"
+    }
+        formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
         # 绘制每个模型的数据
         for idx, (_, row) in enumerate(reordered_scores.iterrows()):
             model_name = row['model']
@@ -440,7 +455,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
             color = color_map.get(model_name, plt.cm.tab10(idx))
             
             # 设置线条属性
-            if model_name in ['LLMGGen-seq', 'LLMGGen']:
+            if model_name in ['Graphia-seq', 'Graphia']:
                 linewidth = 4
                 alpha = 1.0
                 zorder = 10  # 确保在最上层
@@ -458,7 +473,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         
         # 添加标签
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(formatted_metrics, fontsize=13, fontweight='bold')
+        ax.set_xticklabels(formatted_metrics, fontsize=26, fontweight='bold')
         
         # 设置图表样式
         ax.set_ylim(0, 1)
@@ -471,7 +486,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
                   size=16, fontweight='bold', pad=30)
         
         # 添加图例（放在图表外部）
-        plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), 
+        plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), ncols = 2,
                    fontsize=11, frameon=True, fancybox=True, shadow=True)
         
         # 美化网格
@@ -479,7 +494,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         ax.set_facecolor('#f8f9fa')
         
         # 保存图片
-        output_path = Path(output_dir) / f"formatted_radar_{dataset}.png"
+        output_path = Path(output_dir) / f"formatted_radar_{dataset}.pdf"
         plt.tight_layout()
         plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                     facecolor='white', edgecolor='none')
@@ -489,7 +504,7 @@ def plot_formatted_dataset_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
 
 def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_fidelity_scores.csv",
                                 output_dir="LLMGGen/reports/figures/",
-                                figsize=(12, 10)):
+                                figsize=(10, 8)):
     """
     绘制格式化标签的整体雷达图，突出显示 LLMGGen 模型
     
@@ -506,7 +521,7 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 检查必要的列是否存在
     missing_columns = [col for col in metrics if col not in df.columns]
@@ -516,27 +531,36 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
     # 重命名模型
     model_rename_map = {
         'qwen3': 'Qwen3-8b',
-        'qwen3_sft': 'Qwen3-8b-sft'
+        'qwen3_sft': 'Qwen3-8b-sft',
+        'DeepSeek-R1-Distill-Qwen-32B': 'DeepSeek-Q-32B',
+        'Meta-Llama-3.1-70B-Instruct': 'Llama3-70B'
     }
-    
+
     df['model'] = df['model'].replace(model_rename_map)
     
     # 按模型分组并计算平均值
     avg_scores = df.groupby('model')[metrics].mean().reset_index()
     
     # 格式化指标名称（首字母大写，下划线变空格）
-    formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
+    format_metric_map = {
+        "selection_score": r"$S_\text{sel}$",
+        "edge_score": r"$S_\text{edge}$",
+        "tdgg_social_fidelity_score": r"$S_\text{TDGG}$"
+    }
+    formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
     
     # 定义模型绘制顺序
     model_order = [
         'Qwen3-8b',
         'Qwen3-8b-sft', 
         'Qwen3-32B',
-        'DeepSeek-R1-Distill-Qwen-32B',
-        'Meta-Llama-3.1-70B-Instruct',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'DeepSeek-Q-32B',
+        'Llama3-70B',
+        'Graphia-seq',
+        'Graphia'
     ]
+    
+    
     
     # 按照指定顺序重新排列数据
     ordered_data = []
@@ -567,8 +591,8 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         'Qwen3-32B': '#2ca02c',  # 森林绿 Forest Green - 自然系，表达增长
         'DeepSeek-R1-Distill-Qwen-32B': '#9467bd',  # 紫藤紫 Wisteria Purple - 优雅中性
         'Meta-Llama-3.1-70B-Instruct': '#f7b84d',  # 日落金 Sunset Gold - 明亮温暖
-        'LLMGGen-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
-        'LLMGGen': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
+        'Graphia-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
+        'Graphia': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
     }
     
     # 绘制每个模型的数据
@@ -581,15 +605,15 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
         color = color_map.get(model_name, plt.cm.tab10(idx))
         
         # 设置线条属性
-        if model_name in ['LLMGGen-seq', 'LLMGGen']:
+        if model_name in ['Graphia-seq', 'Graphia']:
             linewidth = 4
             alpha = 1.0
-            zorder = 10  # 确保在最上层
+            zorder = 5 # 确保在最上层
             markersize = 10
         else:
             linewidth = 2.5
             alpha = 0.85
-            zorder = 5
+            zorder = 4
             markersize = 8
         
         ax.plot(angles, values, 'o-', linewidth=linewidth, 
@@ -597,30 +621,31 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/tdgg_social_f
                 alpha=alpha, zorder=zorder, markeredgecolor='white', markeredgewidth=1.5)
         ax.fill(angles, values, alpha=0.15, color=color, zorder=zorder-1)
     
-    # 添加标签
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(formatted_metrics, fontsize=13, fontweight='bold')
     
     # 设置图表样式
     ax.set_ylim(0, 1)
     # 修改径向标签（0.2, 0.4等）的大小
-    ax.tick_params(axis='y', labelsize=12)  # 设置径向标签字体大小
+    ax.tick_params(axis='y', labelsize=24,zorder=15)  # 设置径向标签字体大小
     ax.grid(True, alpha=0.3)
     
+        # 添加标签
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(formatted_metrics, fontsize=26, fontweight='bold',zorder=20)
+
     # 设置标题
     # plt.title('Average TDGG Social Fidelity Scores\n(Across All Datasets)', 
     #           size=16, fontweight='bold', pad=30)
     
     # 添加图例（放在图表外部）
-    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), 
-               fontsize=16, frameon=True, fancybox=True, shadow=True)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), ncols = 2,
+               fontsize=22, frameon=True, fancybox=True, shadow=True)
     
     # 美化网格
     ax.spines['polar'].set_visible(False)
     ax.set_facecolor('#f8f9fa')
     
     # 保存图片
-    output_path = Path(output_dir) / "formatted_overall_tdgg_radar.png"
+    output_path = Path(output_dir) / "formatted_overall_tdgg_radar.pdf"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
@@ -650,7 +675,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # 获取需要绘制的指标
-    metrics = ['retrieval_score', 'edge_score', 'tdgg_social_fidelity_score']
+    metrics = ['selection_score', 'edge_score', 'tdgg_social_fidelity_score']
     
     # 检查必要的列是否存在
     missing_columns = [col for col in metrics if col not in df.columns]
@@ -680,8 +705,8 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
         'Qwen3-32B',
         'DeepSeek-R1-Distill-Qwen-32B',
         'Meta-Llama-3.1-70B-Instruct',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 定义颜色映射
@@ -691,22 +716,16 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
         'Qwen3-32B': '#2ca02c',  # 森林绿 Forest Green - 自然系，表达增长
         'DeepSeek-R1-Distill-Qwen-32B': '#9467bd',  # 紫藤紫 Wisteria Purple - 优雅中性
         'Meta-Llama-3.1-70B-Instruct': '#f7b84d',  # 日落金 Sunset Gold - 明亮温暖
-        'LLMGGen-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
-        'LLMGGen': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
+        'Graphia-seq': '#d62728',  # 洋红粉 Magenta Pink - 强烈个性，吸引注意
+        'Graphia': '#17becf'  # 松石青 Turquoise Teal - 清新冷调
     }
     
     # 获取所有数据集
-    datasets = [
-        "Propagate-En",
-        "propagate_zh",
-        "imdb",
-        "weibo_daily",
-        "weibo_tech"
-    ]
+    datasets = df['dataset'].unique()
     n_datasets = len(datasets)
     
     # 计算子图布局
-    cols = min(3, n_datasets)
+    cols = min(2, n_datasets)
     rows = (n_datasets + cols - 1) // cols
     
     # 创建大图
@@ -722,8 +741,15 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
         axes = axes.flatten()
     
     # 格式化指标名称（首字母大写，下划线变空格）
-    formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
-    
+    # formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
+    format_metric_map = {
+        "selection_score": r"$S_\text{sel}$",
+        "edge_score": r"$S_\text{edge}$",
+        "tdgg_social_fidelity_score": r"$S_\text{TDGG}$"
+    }
+    formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
+
+
     # 为每个数据集绘制雷达图
     for idx, dataset in enumerate(datasets):
         ax = axes[idx]
@@ -760,7 +786,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
             color = color_map.get(model_name, plt.cm.tab10(_))
             
             # 设置线条属性
-            if model_name in ['LLMGGen-seq', 'LLMGGen']:
+            if model_name in ['Graphia-seq', 'Graphia']:
                 linewidth = 4
                 alpha = 1.0
                 zorder = 10  # 确保在最上层
@@ -778,7 +804,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
         
         # 添加标签
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(formatted_metrics, fontsize=10, fontweight='bold')
+        ax.set_xticklabels(formatted_metrics, fontsize=26, fontweight='bold', zorder=20)
         
         # 设置图表样式
         ax.set_ylim(0, 1)
@@ -826,7 +852,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
     # 获取第一个子图的句柄和标签
     handles, labels = axes[0].get_legend_handles_labels()
     # 创建统一图例，放在图表下方
-    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.015), 
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.015), ncols = 2,
                fontsize=16, frameon=True, fancybox=True, shadow=True, ncol=3)
     
     # 设置整体标题
@@ -837,7 +863,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/tdgg
     plt.tight_layout()
     
     # 保存图片
-    output_path = Path(output_dir) / "formatted_combined_radar.png"
+    output_path = Path(output_dir) / "formatted_tdgg_combined_radar.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
     plt.close()

@@ -14,16 +14,16 @@ def df_to_latex_combined_groups(df,
                                 label="tab:retrieval_combined"):
     """
     Generate a single LaTeX table with two-level headers:
-      - Row 1: Group names (e.g., Hub, Normal, All), each spanning its own metrics
+      - Row 1: Group names (e.g., Easy, Hard, All), each spanning its own metrics
       - Row 2: Metrics specific to each group (customizable via metric_dict)
       - Rows grouped by dataset (multirow), one row per model
 
     :param df: Input DataFrame
     :param dataset_col: column name for dataset
     :param model_col: column name for model
-    :param group_col: column name for group (e.g., Hub/Normal/All)
+    :param group_col: column name for group (e.g., Easy/Hard/All)
     :param exclude_cols: columns to exclude from metrics
-    :param metric_dict: dict like {'Hub': ['hit@10', 'recall@10'], 'All': ['hit@50']} — per-group metrics
+    :param metric_dict: dict like {'Easy': ['hit@10', 'recall@10'], 'All': ['hit@50']} — per-group metrics
     :param default_metrics: fallback if metric_dict doesn't specify
     :param caption: table caption
     :param label: table label
@@ -55,7 +55,7 @@ def df_to_latex_combined_groups(df,
                 metric_dict[grp] = default_metrics
 
     # Only keep valid groups and metrics
-    valid_groups = [g for g in ["Hub", "Normal", "All"] if g in metric_dict and g in df[group_col].dropna().values]
+    valid_groups = [g for g in ["Easy", "Hard", "All"] if g in metric_dict and g in df[group_col].dropna().values]
     if not valid_groups:
         raise ValueError("No valid groups found in metric_dict and data.")
 
@@ -169,8 +169,8 @@ def df_to_latex_combined_groups(df,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate combined LaTeX table with customizable per-group metrics.")
     parser.add_argument("--input", type=str, required=True, help="Path to input CSV file")
-    parser.add_argument("--hub-metrics", type=str, nargs="+", default=["fail_rate", "hit@100", "recall@100"], help="Metrics for Hub group")
-    parser.add_argument("--normal-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for Normal group")
+    parser.add_argument("--hub-metrics", type=str, nargs="+", default=["fail_rate", "hit@100", "recall@100"], help="Metrics for Easy group")
+    parser.add_argument("--normal-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for Hard group")
     parser.add_argument("--all-metrics", type=str, nargs="+", default=["hit@100", "recall@100"], help="Metrics for All group")
     parser.add_argument("--caption", type=str, default="Retrieval Performance Across Groups", help="Table caption")
     parser.add_argument("--label", type=str, default="tab:retrieval_combined", help="Table label")
@@ -187,8 +187,8 @@ if __name__ == "__main__":
 
     # Define per-group metrics
     metric_dict = {
-        "Hub": args.hub_metrics,
-        "Normal": args.normal_metrics,
+        "Easy": args.hub_metrics,
+        "Hard": args.normal_metrics,
         "All": args.all_metrics
     }
 

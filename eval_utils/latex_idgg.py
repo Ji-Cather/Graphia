@@ -10,9 +10,9 @@ def df_to_latex_idgg(df,
                      label="tab:idgg_results"):
     """
     将IDGG评估结果转换为LaTeX表格格式，按数据集分组，每组包含三大列：
-    1. Macro Structure指标（包含多个子指标）+ macro_structure_score
-    2. Macro Phenomenon指标（包含多个子指标）+ macro_phenomenon_score
-    3. IDGG Social Fidelity指标（idgg_social_fidelity_score）
+    1. Macro Structure指标（包含多个子指标）+ macro_structure_score + macro_structure_rank_score
+    2. Macro Phenomenon指标（包含多个子指标）+ macro_phenomenon_score + macro_phenomenon_rank_score
+    3. IDGG Social Fidelity指标（idgg_social_fidelity_score）+ idgg_rank_score
     """
     
     # 清理列名和数据
@@ -23,11 +23,14 @@ def df_to_latex_idgg(df,
     # 参考plot_idgg_scores.py中的重命名规则
     # 重命名模型
     model_rename_map = {
-        'qwen3_sft': 'Qwen3-8b-sft',
+        'qwen3_sft': 'Qwen3-8B-sft',
         'DGGen': 'DGGen',
         'DYMOND': 'DYMOND',
         'tigger': 'Tigger',
-        'idgg_csv_processed': 'GAG-general'
+        'idgg_csv_processed': 'GAG-general',
+        'qwen3': 'Qwen3-8B',
+        'DeepSeek-R1-Distill-Qwen-32B': 'DeepSeek-Q-32B',
+        'Meta-Llama-3.1-70B-Instruct': 'Llama3-70B'
     }
     df[model_col] = df[model_col].replace(model_rename_map)
     
@@ -46,12 +49,13 @@ def df_to_latex_idgg(df,
     # 参考eval_idgg.py#L16-L19
     negative_metrics = [
         'graph_list_degree_mmd', 'graph_list_cluster_mmd', 'graph_list_spectra_mmd',
-        'graph_list_D', 'graph_macro_num_chambers_diff'
+        'graph_macro_num_chambers_diff',  'graph_macro_alpha_gap',
+        'macro_structure_rank_score', 'macro_phenomenon_rank_score', 'idgg_social_fidelity_rank_score'
     ]
     
     # 参考eval_idgg.py#L22-L24
     positive_metrics = [
-        'graph_edge_overlap', 'graph_macro_auc@100_hub'
+        'graph_edge_overlap', 'graph_macro_precision@100pagerank-hub'
     ]
     
     # 定义三大列的指标
@@ -61,18 +65,20 @@ def df_to_latex_idgg(df,
         'graph_list_cluster_mmd', 
         'graph_list_spectra_mmd',
         'graph_edge_overlap',
-        'macro_structure_score'
+        'macro_structure_score',
+        'macro_structure_rank_score'
     ]
     
     # 参考eval_idgg.py#L90-L92
     macro_phenomenon_metrics = [
-        'graph_list_D', 
-        'graph_macro_auc@100_hub', 
+        'graph_macro_precision@100pagerank-hub', 
         'graph_macro_num_chambers_diff',
-        'macro_phenomenon_score'
+        'graph_macro_alpha_gap',
+        'macro_phenomenon_score',
+        'macro_phenomenon_rank_score'
     ]
     
-    idgg_metrics = ['idgg_social_fidelity_score']
+    idgg_metrics = ['idgg_social_fidelity_score','idgg_social_fidelity_rank_score']
     
     # 所有需要的指标
     all_metrics = macro_structure_metrics + macro_phenomenon_metrics + idgg_metrics
@@ -84,11 +90,11 @@ def df_to_latex_idgg(df,
     
     # 参考plot_idgg_scores.py中的模型顺序（L245-L254）
     model_order = [
-        'DGGen',
-        'DYMOND',
-        'Tigger',
-        'GAG-general',
-        'Qwen3-8b-sft',
+        'Qwen3-8B',
+        'Qwen3-8B-sft', 
+        'Qwen3-32B',
+        'DeepSeek-Q-32B',
+        'Llama3-70B',
         'LLMGGen-seq',
         'LLMGGen'
     ]
@@ -118,16 +124,19 @@ def df_to_latex_idgg(df,
     
     # 合并所有排序后的数据
     df = pd.concat(sorted_dfs, ignore_index=True)
+    
 
     latex_lines = []
     latex_lines.append(r"\begin{table}[htbp]")
     latex_lines.append(r"  \centering")
     latex_lines.append(r"  \begin{adjustbox}{width=\textwidth, totalheight=\textheight, keepaspectratio}")
-    latex_lines.append(r"  \begin{tabular}{l|ccccc|cccc|c}")
+    # latex_lines.append(r"  \begin{tabular}{l|ccccc|cccc|cc}")
+    latex_lines.append(r"  \begin{tabular}{l|cccccc|ccccc|cc}")
     latex_lines.append(r"    \toprule")
     
     # 表头
-    header = f"Model & \\multicolumn{{5}}{{c|}}{{Macro Structure}} & \\multicolumn{{4}}{{c|}}{{Macro Phenomenon}} & IDGG"
+    # header = f"Model & \\multicolumn{{5}}{{c|}}{{Macro Structure}} & \\multicolumn{{4}}{{c|}}{{Macro Phenomenon}} & \\multicolumn{{2}}{{c}}{{IDGG}}"
+    header = f"Model & \\multicolumn{{6}}{{c|}}{{Macro Structure}} & \\multicolumn{{5}}{{c|}}{{Macro Phenomenon}} & \\multicolumn{{2}}{{c}}{{IDGG}}"
     latex_lines.append(f"    {header} \\\\")
     
     # 子表头，添加方向箭头符号
@@ -137,16 +146,20 @@ def df_to_latex_idgg(df,
     subheader_parts.append(r"MMD.C $\downarrow$")
     subheader_parts.append(r"MMD.S $\downarrow$")
     subheader_parts.append(r"Edge Overlap $\uparrow$")
-    subheader_parts.append("Score")
+    subheader_parts.append(r"Score $\uparrow$")
+    subheader_parts.append(r"Rank $\downarrow$")
     
     # Macro Phenomenon 子指标
-    subheader_parts.append(r"D $\downarrow$")
-    subheader_parts.append(r"AUC@100Hub $\uparrow$")
+    # subheader_parts.append(r"D $\downarrow$")
+    subheader_parts.append(r"P@100Hub $\uparrow$")
     subheader_parts.append(r"Chambers Diff $\downarrow$")
-    subheader_parts.append("Score")
+    subheader_parts.append(r"$\Delta \alpha$ $\downarrow$")
+    subheader_parts.append(r"Score $\uparrow$")
+    subheader_parts.append(r"Rank $\downarrow$")
     
     # IDGG 指标
-    subheader_parts.append("Score")
+    subheader_parts.append(r"Score $\uparrow$")
+    subheader_parts.append(r"Rank $\downarrow$")
     
     subheader = " & ".join(subheader_parts)
     latex_lines.append(f"    {subheader} \\\\")
@@ -164,7 +177,7 @@ def df_to_latex_idgg(df,
         
         # 格式化数据集名称（参考plot_idgg_scores.py#L504-L508）
         formatted_dataset_name = format_dataset_name(dataset)
-        latex_lines.append(f"    \\multicolumn{{11}}{{l}}{{\\textbf{{{formatted_dataset_name}}}}} \\\\")
+        latex_lines.append(f"    \\multicolumn{{14}}{{c}}{{\\textbf{{{formatted_dataset_name}}}}} \\\\")
         latex_lines.append(r"    \midrule")
         
         # 为每个模型添加一行，按照指定顺序
@@ -179,13 +192,13 @@ def df_to_latex_idgg(df,
                 try:
                     val = float(row[metric])
                     # 格式化为4位小数，去掉末尾的0
-                    val_str = f"{val:.4f}".rstrip('0').rstrip('.')
+                    val_str = f"{val:.4f}"
                     
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
                         # 对于负向指标，数值越小越好，所以按升序排列
-                        if metric in negative_metrics:
+                        if metric in negative_metrics or "rank_score" in metric:
                             sorted_vals = col_vals.sort_values(ascending=True)
                         else:
                             # 对于正向指标，数值越大越好，所以按降序排列
@@ -205,18 +218,20 @@ def df_to_latex_idgg(df,
                 
                 values.append(val_str)
             
+           
+            
             # 处理 Macro Phenomenon 指标
             for i, metric in enumerate(macro_phenomenon_metrics):
                 try:
                     val = float(row[metric])
                     # 格式化为4位小数，去掉末尾的0
-                    val_str = f"{val:.4f}".rstrip('0').rstrip('.')
+                    val_str = f"{val:.4f}"
                     
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
                         # 对于负向指标，数值越小越好，所以按升序排列
-                        if metric in negative_metrics:
+                        if metric in negative_metrics or "rank_score" in metric:
                             sorted_vals = col_vals.sort_values(ascending=True)
                         else:
                             # 对于正向指标，数值越大越好，所以按降序排列
@@ -235,6 +250,8 @@ def df_to_latex_idgg(df,
                     val_str = str(row[metric])
                 
                 values.append(val_str)
+            
+            
             
             # 处理 IDGG Social Fidelity 指标
             for metric in idgg_metrics:
@@ -246,8 +263,12 @@ def df_to_latex_idgg(df,
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
-                        # IDGG指标都是正向指标，数值越大越好
-                        sorted_vals = col_vals.sort_values(ascending=False)
+                       # 对于负向指标，数值越小越好，所以按升序排列
+                        if metric in negative_metrics or "rank" in metric:
+                            sorted_vals = col_vals.sort_values(ascending=True)
+                        else:
+                            # 对于正向指标，数值越大越好，所以按降序排列
+                            sorted_vals = col_vals.sort_values(ascending=False)
                         top1_val = sorted_vals.iloc[0]
                         top2_val = sorted_vals.iloc[1] if len(sorted_vals) > 1 else top1_val
                         
@@ -261,6 +282,8 @@ def df_to_latex_idgg(df,
                     val_str = str(row[metric])
                 
                 values.append(val_str)
+            
+            
             
             # 添加模型行
             row_str = "    " + " & ".join(values) + r" \\"

@@ -22,6 +22,12 @@ def df_to_latex_multidataset(df,
         exclude_cols = [model_col, group_col, 'split', 'task', "Unnamed: 0"]
     
     df.columns = df.columns.str.strip()  # 清理列名
+    df = df.rename(columns={
+        "average":"LLM Rating",
+        "label_acc":"Acc Category",
+        "ROUGE_L":"ROUGE-L",
+        "BERTScore_F1":"BERTScore"
+    })
     df['model'] = df['model'].apply(rename_edge_model)
     df[model_col] = df[model_col].fillna("Unknown").astype(str).str.strip()
     df[group_col] = df[group_col].fillna("Unknown_Dataset").astype(str).str.strip()
@@ -41,7 +47,10 @@ def df_to_latex_multidataset(df,
     # 添加数据集重命名逻辑
     dataset_rename_map = {
         '8days_dytag_small_text_en': 'Propagate-En',
-        'propagate_large_cn': 'Propagate-Zh'
+        'propagate_large_cn': 'Propagate-Zh',
+        'weibo_tech':'Weibo Tech',
+        'weibo_daily':'Weibo Daily',
+        'imdb':'Imdb',
     }
     df[group_col] = df[group_col].replace(dataset_rename_map)
 
@@ -112,7 +121,9 @@ def df_to_latex_multidataset(df,
             return
         n_models = len(dataset_group_rows)
         for i, row in enumerate(dataset_group_rows):
+            
             if i == 0:
+                # last_dataset = last_dataset.replace("_"," ").title()
                 cells = [f"\\multirow{{{n_models}}}{{*}}{{{last_dataset}}}", row[0]] + row[1:]
             else:
                 cells = ["", row[0]] + row[1:]
@@ -143,7 +154,7 @@ def df_to_latex_multidataset(df,
                     top1_val = sorted_vals.iloc[0]
                     top2_val = sorted_vals.iloc[1] if len(sorted_vals) > 1 else top1_val
 
-                    val_str = f"{num_val:.4f}".rstrip('0').rstrip('.')
+                    val_str = f"{num_val:.3f}".rstrip('0').rstrip('.')
                     if abs(num_val - top1_val) < 1e-6:
                         val_str = f"\\textbf{{{val_str}}}"
                     elif abs(num_val - top2_val) < 1e-6:
@@ -215,7 +226,10 @@ if __name__ == "__main__":
         "GF","CF","PD","DA","IQ","CR","average"
     ]
     edge_part_metrics = [
-        "average","label_acc","ROUGE_L","BERTScore_F1"
+        "LLM Rating",
+        "Acc Category",
+        "ROUGE-L",
+       "BERTScore"
     ]
     df["average"] = np.array(df["average"].values)*5
     # Generate LaTeX

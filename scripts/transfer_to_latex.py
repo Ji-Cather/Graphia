@@ -1,7 +1,13 @@
 import pandas as pd
 import numpy as np
 import argparse
-
+import re
+def rename_retrieval_model(model_name):
+    if re.match(r'grpo_.*_sotopia_edge_.*', model_name):
+        return 'Graphia-seq'
+    elif model_name.startswith('grpo_'):
+        return 'Graphia'
+    return model_name
 def df_to_latex_multidataset(df, 
                              group_col='dataset', 
                              model_col='model',
@@ -16,7 +22,39 @@ def df_to_latex_multidataset(df,
     df.columns = df.columns.str.strip()  # 清理列名
     df[model_col] = df[model_col].fillna("Unknown").astype(str).str.strip()
     df[group_col] = df[group_col].fillna("Unknown_Dataset").astype(str).str.strip()
-
+    # Clean data
+    df.columns = df.columns.str.strip()
+    dataset_rename_map = {
+        '8days_dytag_small_text_en': 'Propagate-En',
+        'propagate_large_cn': 'Propagate-Zh',
+        'weibo_daily':'Weibo Daily',
+        'weibo_tech':'Weibo Tech',
+    }
+    df['dataset'] = df['dataset'].replace(dataset_rename_map)
+    model_rename_map = {
+        'qwen3_sft': 'Qwen3-8B-sft',
+        'DGGen': 'DGGen',
+        'DYMOND': 'DYMOND',
+        'tigger': 'Tigger',
+        'idgg_csv_processed': 'GAG-general',
+        
+        'qwen3': 'Qwen3-8B',
+        'DeepSeek-R1-Distill-Qwen-32B': 'DeepSeek-Q-32B',
+        'Meta-Llama-3.1-70B-Instruct': 'Llama3-70B'
+    }
+    df[model_col] = df[model_col].replace(model_rename_map)
+    df['model'] = df['model'].apply(rename_retrieval_model)
+    model_order = [
+        # 'DGGen',
+        # 'DYMOND',
+        # 'Tigger',
+        # 'GAG-general',
+        'Qwen3-8B'
+        'Qwen3-8B-sft',
+        'Graphia-seq',
+        'Graphia'
+    ]
+    df = df[df['model'].isin(model_order)]
     metric_cols = [col for col in df.columns if col not in exclude_cols]
     
     if metric_order:
@@ -149,16 +187,16 @@ if __name__ == "__main__":
     edge_all_metrics = [
         "GF","CF","PD","DA","IQ","CR","average"
     ]
-    edge_part_metrics = [
-        "average","label_acc","ROUGE_L","BERTScore_F1"
-    ]
+    # edge_part_metrics = [
+    #     "average","label_acc","ROUGE_L","BERTScore_F1"
+    # ]
     df["average"] = np.array(df["average"].values)*5
     # Generate LaTeX
     latex_code = df_to_latex_multidataset(
         df,
         group_col='dataset',
         model_col='model',
-        metric_order= edge_part_metrics,
+        metric_order= edge_all_metrics,
         caption=args.caption,
         label=args.label,
     )

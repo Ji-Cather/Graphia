@@ -21,9 +21,9 @@ dx_seq_model_name=seq_deg
 # dx_seq_model_name=seq_deg
 
 # # propagate_large_cn
-export data_name=propagate_large_cn
-dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-dx_seq_model_name=seq_deg
+# export data_name=propagate_large_cn
+# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+# dx_seq_model_name=seq_deg
 
 # imdb
 # export data_name=imdb
@@ -54,7 +54,7 @@ save_root="LLMGGen"
 
 # seq trainset
 
-python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --edge_seq --dst_seq
+# python -m LLMGGen.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --edge_seq --dst_seq
 
 # seq idgg pred 
 # python -m LLMGGen.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_seq_model_root/test_degree.pt --infer_dst --save_root ${save_root}

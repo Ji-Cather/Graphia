@@ -935,7 +935,45 @@ def calculate_power_law_fitness(graph: nx.Graph,
     except:
         D = 1.0 # default to upper bound of 
 
-    return D
+    return D, alpha
+
+
+def evaluate_pagerank_hubs(gt_graph: nx.Graph, 
+                          pred_graph: nx.Graph, 
+                          k: int = 100) -> dict:
+    """
+    基于PageRank分数计算真实图和预测图中hub节点的precision@k
+    
+    参数:
+    gt_graph: 真实图 (NetworkX格式)
+    pred_graph: 预测图 (NetworkX格式)
+    k: 用于计算重叠的top-k节点数，默认为100
+    
+    返回:
+    dict: 包含precision@k指标的字典
+    """
+    
+    # 计算真实图和预测图的PageRank分数
+    gt_pagerank = nx.pagerank(gt_graph)
+    pred_pagerank = nx.pagerank(pred_graph)
+    
+    # 获取PageRank分数最高的前k个节点
+    gt_top_k_nodes = sorted(gt_pagerank.items(), key=lambda x: x[1], reverse=True)[:k]
+    pred_top_k_nodes = sorted(pred_pagerank.items(), key=lambda x: x[1], reverse=True)[:k]
+    
+    # 提取节点ID
+    gt_top_k_node_ids = set([node_id for node_id, score in gt_top_k_nodes])
+    pred_top_k_node_ids = set([node_id for node_id, score in pred_top_k_nodes])
+    
+    # 计算precision@k
+    intersection = len(gt_top_k_node_ids.intersection(pred_top_k_node_ids))
+    precision_at_k = intersection / k if k > 0 else 0.0
+    
+    return {
+        f"precision@{k}pagerank-hub": precision_at_k
+    }
+
+
 def evaluate_graph_macro_phenomena(
     pred_data: TemporalData,
     gt_data: TemporalData,
@@ -964,10 +1002,17 @@ def evaluate_graph_macro_phenomena(
     
     graph_metrics.update({f"{k}@100_hub": v for k, v in pred_result.items()})
 
-   
+    hub_result = evaluate_pagerank_hubs(gt_nx_graph, pred_nx_graph,
+                                        k=100)
+    graph_metrics.update(hub_result)
+
+
+    D_pred, alpha_pred = calculate_power_law_fitness(pred_nx_graph)
+    D_true, alpha_true = calculate_power_law_fitness(gt_nx_graph)
 
     graph_metrics.update({
-        "D": calculate_power_law_fitness(pred_nx_graph)
+        "alpha_gap": np.abs(alpha_pred - alpha_true),
+        "D": D_pred
     })
 
     return graph_metrics
@@ -1004,7 +1049,7 @@ if __name__ == "__main__":
     if args.graph_report_path != "":
         dfs = []
         # for cut_off_baseline in ["edge", "time"]:
-        for cut_off_baseline in ["time","edge"]:
+        for cut_off_baseline in ["edge"]:
             results = []
             args.cut_off_baseline = cut_off_baseline
             test_data, baseline_data_map, max_node_number, node_text, node_feature, pred_len, unique_times \
@@ -1024,7 +1069,7 @@ if __name__ == "__main__":
                                                 test_data, 
                                                 baseline_data,
                                                 node_feature=node_feature)
-                graph_matrixs["model"] = f"{baseline_name}_{cut_off_baseline}"
+                graph_matrixs["model"] = f"{baseline_name}"
                 results.append(graph_matrixs)
 
             output_path = args.graph_report_path

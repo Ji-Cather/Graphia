@@ -672,7 +672,8 @@ def process_single_edge_attr_prediction(
     interaction_cache: Dict,
     input_edge_ids: List,
     type: str = "pred", # pred or gt
-    few_shot = 0
+    few_shot = 0,
+    broadcast_message: bool = False
 ) -> Dict:
     edge_examples = []
     
@@ -691,9 +692,13 @@ def process_single_edge_attr_prediction(
             interaction_cache,
             few_shot
         )
+        if broadcast_message:
+            format_instruction = Dataset_Template[environment_data["data_name"]]["broadcast_message"]+ agent_parser.format_instruction
+        else:
+            format_instruction = agent_parser.format_instruction
         if type == "pred":
             edge_examples.append({
-                        "prompt": EDGE_ATTR_PROMPT + "\n" + agent_parser.format_instruction + "\n" + agent_text,
+                        "prompt": EDGE_ATTR_PROMPT + "\n" + format_instruction + "\n" + agent_text,
                         # "pred_edge_id": 
                         "src_idx": src_id,
                         "dst_idx": dst_id,
@@ -705,8 +710,8 @@ def process_single_edge_attr_prediction(
             gt_label = int(data.ctdg.label[edge_id].item())
             gt_t = data.ctdg.t[edge_id].item()
             edge_examples.append({
-                        "prompt": EDGE_ATTR_PROMPT+ "\n" + agent_parser.format_instruction + "\n" + agent_text,
-                        "instruction": EDGE_ATTR_PROMPT+ "\n" + agent_parser.format_instruction,
+                        "prompt": EDGE_ATTR_PROMPT+ "\n" + format_instruction + "\n" + agent_text,
+                        "instruction": EDGE_ATTR_PROMPT+ "\n" + format_instruction,
                         "input": agent_text,
                         # "pred_edge_id": 
                         "src_idx": src_id,  
@@ -828,7 +833,9 @@ def get_gen_data(src_dsts) -> TemporalData:
     
 
 
-def main_infer_edge(query_result_path, dx_src_path: str = None):
+def main_infer_edge(query_result_path, 
+                    dx_src_path: str = None,
+                    broadcast_message: bool = False):
     bwr_ctdg = BWRCTDGALLDataset(
         pred_ratio=args.pred_ratio,
         bwr=args.bwr,
@@ -898,8 +905,10 @@ def main_infer_edge(query_result_path, dx_src_path: str = None):
                 args,
                 data_ctdg.interaction_cache,
                 input_edge_ids,
-                type = "pred"
+                type = "pred",
+                broadcast_message = broadcast_message
             )
+            
             edge_text_examples_all = pd.concat([edge_text_examples_all, 
                                                 pd.DataFrame(edge_text_examples)], 
                                                 ignore_index=True)
@@ -911,7 +920,10 @@ def main_infer_edge(query_result_path, dx_src_path: str = None):
             inplace=True)
     
     edge_text_examples_all['tag'] = args.split
-    edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
+    if broadcast_message:
+        edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples_broadcast.csv'), index=False)
+    else:    
+        edge_text_examples_all.to_csv(os.path.join(prompt_dir, 'edge_text_examples.csv'), index=False)
     
     print(f"Edge examples prompt mean length: {edge_text_examples_all['prompt'].str.len().mean():.2f}")
     print(f"Edge examples prompt max length: {edge_text_examples_all['prompt'].str.len().max()}")
@@ -1942,8 +1954,8 @@ def process_query_result(
 
     df_results = pd.DataFrame(results_list)
     groups = {
-        'Hub': df_results['is_hub'],
-        'Normal': ~df_results['is_hub'],
+        'Easy': df_results['is_hub'],
+        'Hard': ~df_results['is_hub'],
         'All': pd.Series([True] * len(df_results))  # 全部样本
     }
 
@@ -2148,8 +2160,8 @@ def process_query_result_group(
     
     df_results = pd.DataFrame(results_list)
     groups = {
-        'Hub': df_results['is_hub'],
-        'Normal': ~df_results['is_hub'],
+        'Easy': df_results['is_hub'],
+        'Hard': ~df_results['is_hub'],
         'All': pd.Series([True] * len(df_results))  # 全部样本
     }
 
@@ -2894,6 +2906,7 @@ if __name__ == "__main__":
     parser.add_argument('--dx_src_path', type=str, default=None, help='评估查询图的路径')
 
     parser.add_argument('--infer_edge', action= "store_true", help = "generate infer dst data")
+    parser.add_argument('--broadcast', action= "store_true", help = "broadcast message")
     
     
     # process query result    
@@ -2985,7 +2998,8 @@ if __name__ == "__main__":
     if args.infer_edge:
         assert args.query_result_path is not None, "must pass degree prediction data for infer"
         main_infer_edge(query_result_path = args.query_result_path,
-                        dx_src_path=args.dx_src_path) # O(N)
+                        dx_src_path=args.dx_src_path,
+                        broadcast_message=args.broadcast) # O(N)
 
 
     if args.sft:

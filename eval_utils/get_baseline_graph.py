@@ -109,19 +109,19 @@ def get_baseline_graphs(args):
             "LLMGGen/baselines/DYMOND/8days_dytag_small_text_en/learned_parameters/generated_graph/results/generated_edges.csv"
         ],
         "weibo_daily":[
-            "LLMGGen/baselines/idgg_csv_processed/deepseek/weibo_daily/edge_weibo_daily.csv",
+            "LLMGGen/baselines/idgg_csv_processed/llama3-8b/weibo_daily/edge_weibo_daily.csv",
             "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_daily.csv",
             "LLMGGen/baselines/tigger/models/weibo_daily/results/generated_edges.csv",
             
         ],
         "imdb":[
-            "LLMGGen/baselines/idgg_csv_processed/deepseek/imdb/edge_imdb.csv",
+            "LLMGGen/baselines/idgg_csv_processed/llama3-8b/imdb/edge_imdb.csv",
             "LLMGGen/baselines/DGGen/results/synthetic_data/imdb.csv",
             "LLMGGen/baselines/tigger/models/imdb/results/generated_edges.csv",
             
         ],
         "weibo_tech":[
-            "LLMGGen/baselines/idgg_csv_processed/deepseek/weibo_tech/edge_weibo_tech.csv",
+            "LLMGGen/baselines/idgg_csv_processed/llama3-8b/weibo_tech/edge_weibo_tech.csv",
             "LLMGGen/baselines/DGGen/results/synthetic_data/weibo_tech.csv",
             "LLMGGen/baselines/tigger/models/weibo_tech/results/generated_edges.csv",
             

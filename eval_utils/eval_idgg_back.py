@@ -15,12 +15,12 @@ def normalize_metrics_for_idgg(df):
     # 获取所有负向指标列 (需要反向)
     negative_metrics = [col for col in df.columns if col in [
         'graph_list_degree_mmd', 'graph_list_cluster_mmd', 'graph_list_spectra_mmd',
-        'graph_macro_alpha_gap', 'graph_macro_num_chambers_diff'
+        'graph_macro_D', 'graph_macro_num_chambers_diff'
     ]]
     
     # 获取所有正向指标列
     positive_metrics = [col for col in df.columns if col in [
-        'graph_edge_overlap', 'graph_macro_precision@100pagerank-hub'
+        'graph_edge_overlap', 'graph_macro_auc@100_hub'
     ]]
     
     # print(f"Negative metrics (to be reversed): {negative_metrics}")
@@ -67,9 +67,8 @@ def calculate_idgg_social_fidelity_scores(original_df, normalized_df, weights=No
     计算 IDGG social fidelity scores
     包括三个子分数:
     1. macro_structure_score: 宏观拟真拓扑结构指标 (degree_mmd, cluster_mmd, spectra_mmd, edge_overlap)
-    2. macro_phenomenon_score: 宏观现象拟合指标 (D, precision@100pagerank-hub, num_chambers_diff)
+    2. macro_phenomenon_score: 宏观现象拟合指标 (D, auc@100_hub, num_chambers_diff)
     3. idgg_social_fidelity_score: 综合分数
-    以及对应的排名指标
     """
     if weights is None:
         # 默认权重
@@ -89,7 +88,7 @@ def calculate_idgg_social_fidelity_scores(original_df, normalized_df, weights=No
     
     # 宏观现象拟合指标 (负向指标，已反向处理)
     macro_phenomenon_metrics = [col for col in normalized_df.columns if col in [
-        'graph_macro_alpha_gap', 'graph_macro_precision@100pagerank-hub', 'graph_macro_num_chambers_diff'
+        'graph_macro_D', 'graph_macro_auc@100_hub', 'graph_macro_num_chambers_diff'
     ]]
     
     print(f"Macro structure metrics: {macro_structure_metrics}")
@@ -112,52 +111,6 @@ def calculate_idgg_social_fidelity_scores(original_df, normalized_df, weights=No
         weights['macro_structure'] * result_df['macro_structure_score'] + 
         weights['macro_phenomenon'] * result_df['macro_phenomenon_score']
     )
-    
-    # 添加基于排名的计算
-    # 初始化排名列
-    for metric in macro_structure_metrics:
-        result_df[f'{metric}_rank'] = 0.0
-    
-    for metric in macro_phenomenon_metrics:
-        result_df[f'{metric}_rank'] = 0.0
-    
-    result_df['macro_structure_rank_score'] = 0.0
-    result_df['macro_phenomenon_rank_score'] = 0.0
-    result_df['idgg_social_fidelity_rank_score'] = 0.0
-    
-    # 按数据集分别计算排名
-    for dataset in result_df['dataset'].unique():
-        dataset_mask = result_df['dataset'] == dataset
-        dataset_indices = result_df[dataset_mask].index
-        
-        # 计算每个指标的排名
-        # 对于所有指标，值越大排名越靠前(1为最好)，因为负向指标已经被反转了
-        all_metrics = macro_structure_metrics + macro_phenomenon_metrics
-        for metric in all_metrics:
-            metric_values = normalized_df.loc[dataset_indices, metric]
-            # 使用 rank 方法，method='min' 表示相同值取最小排名，ascending=False 表示值越高排名越前(1为最好)
-            ranks = metric_values.rank(method='min', ascending=False)
-            result_df.loc[dataset_indices, f'{metric}_rank'] = ranks
-        
-        # 计算 macro_structure_rank_score (基于 macro_structure 指标排名的平均值)
-        if macro_structure_metrics:
-            structure_ranks = [f'{metric}_rank' for metric in macro_structure_metrics]
-            result_df.loc[dataset_indices, 'macro_structure_rank_score'] = result_df.loc[dataset_indices, structure_ranks].mean(axis=1)
-        
-        # 计算 macro_phenomenon_rank_score (基于 macro_phenomenon 指标排名的平均值)
-        if macro_phenomenon_metrics:
-            phenomenon_ranks = [f'{metric}_rank' for metric in macro_phenomenon_metrics]
-            result_df.loc[dataset_indices, 'macro_phenomenon_rank_score'] = result_df.loc[dataset_indices, phenomenon_ranks].mean(axis=1)
-        
-        # 计算 idgg_social_fidelity_rank_score (基于两个排名得分的加权平均)
-        # structure_rank_scores = result_df.loc[dataset_indices, 'macro_structure_rank_score']
-        # phenomenon_rank_scores = result_df.loc[dataset_indices, 'macro_phenomenon_rank_score']
-        # fidelity_rank_scores = (
-        #     weights['macro_structure'] * structure_rank_scores + 
-        #     weights['macro_phenomenon'] * phenomenon_rank_scores
-        # )
-        fidelity_rank_scores = result_df.loc[dataset_indices,'idgg_social_fidelity_score'].rank(method='min', ascending=False)
-        result_df.loc[dataset_indices, 'idgg_social_fidelity_rank_score'] = fidelity_rank_scores
     
     return result_df
 
@@ -241,7 +194,7 @@ def load_and_process_graph_data(file_path, exclude_models=None):
 def load_and_process_graph_macro_data(file_path, exclude_models=None):
     """
     加载并处理 graph macro 数据 (merged_graph_macro_matrix.csv)
-    处理指标: num_chambers_diff, precision@100pagerank-hub, D
+    处理指标: num_chambers_diff, auc@100_hub, D
     """
     df = pd.read_csv(file_path)
     
@@ -255,7 +208,7 @@ def load_and_process_graph_macro_data(file_path, exclude_models=None):
     df['model'] = df['model'].apply(rename_retrieval_model)
     
     # 选择需要的指标
-    metrics = ['num_chambers_diff', 'precision@100pagerank-hub', 'alpha_gap']
+    metrics = ['num_chambers_diff', 'auc@100_hub', 'D']
     
     # 确保所需列存在
     required_columns = ['model', 'dataset'] + metrics
@@ -294,11 +247,9 @@ def print_top_models_idgg(top_models):
         print(f"\n数据集: {dataset}")
         print("-" * 50)
         print(f"  最高 Macro Structure Score 模型: {models['macro_structure']['model']} (得分: {models['macro_structure']['score']:.4f})")
-        print(f"  最佳 Macro Structure Rank 模型: {models['macro_structure']['rank_model']} (排名得分: {models['macro_structure']['rank_score']:.4f})")
         print(f"  最高 Macro Phenomenon Score 模型: {models['macro_phenomenon']['model']} (得分: {models['macro_phenomenon']['score']:.4f})")
-        print(f"  最佳 Macro Phenomenon Rank 模型: {models['macro_phenomenon']['rank_model']} (排名得分: {models['macro_phenomenon']['rank_score']:.4f})")
         print(f"  最高 Fidelity Score 模型: {models['fidelity']['model']} (得分: {models['fidelity']['score']:.4f})")
-        print(f"  最佳 Fidelity Rank 模型: {models['fidelity']['rank_model']} (排名得分: {models['fidelity']['rank_score']:.4f})")
+
 def find_top_models_per_dataset_idgg(df):
     """
     找出每个数据集中三个 IDGG 指标的最高分模型
@@ -318,30 +269,19 @@ def find_top_models_per_dataset_idgg(df):
         top_phenomenon = dataset_df.loc[dataset_df['macro_phenomenon_score'].idxmax()]
         top_fidelity = dataset_df.loc[dataset_df['idgg_social_fidelity_score'].idxmax()]
         
-        # 找到每个排名指标的最优模型（排名得分越低越好）
-        top_structure_rank = dataset_df.loc[dataset_df['macro_structure_rank_score'].idxmin()]
-        top_phenomenon_rank = dataset_df.loc[dataset_df['macro_phenomenon_rank_score'].idxmin()]
-        top_fidelity_rank = dataset_df.loc[dataset_df['idgg_social_fidelity_rank_score'].idxmin()]
-        
         top_models[dataset] = {
             'dataset': dataset,
             'macro_structure': {
                 'model': top_structure['model'],
-                'score': top_structure['macro_structure_score'],
-                'rank_model': top_structure_rank['model'],
-                'rank_score': top_structure_rank['macro_structure_rank_score']
+                'score': top_structure['macro_structure_score']
             },
             'macro_phenomenon': {
                 'model': top_phenomenon['model'],
-                'score': top_phenomenon['macro_phenomenon_score'],
-                'rank_model': top_phenomenon_rank['model'],
-                'rank_score': top_phenomenon_rank['macro_phenomenon_rank_score']
+                'score': top_phenomenon['macro_phenomenon_score']
             },
             'fidelity': {
                 'model': top_fidelity['model'],
-                'score': top_fidelity['idgg_social_fidelity_score'],
-                'rank_model': top_fidelity_rank['model'],
-                'rank_score': top_fidelity_rank['idgg_social_fidelity_rank_score']
+                'score': top_fidelity['idgg_social_fidelity_score']
             }
         }
     
@@ -418,10 +358,10 @@ if __name__ == "__main__":
                         help="输出文件路径")
     parser.add_argument("--exclude_models", type=str, nargs='*',
                         help="要排除的模型列表，例如: --exclude_models idgg_csv_processed_edge")
-    parser.add_argument("--macro_structure_weight", type=float, default=0.5,
-                        help="宏观结构部分的权重 (默认: 0.5)")
-    parser.add_argument("--macro_phenomenon_weight", type=float, default=0.5,
-                        help="宏观现象部分的权重 (默认: 0.5)")
+    parser.add_argument("--macro_structure_weight", type=float, default=0.6,
+                        help="宏观结构部分的权重 (默认: 0.4)")
+    parser.add_argument("--macro_phenomenon_weight", type=float, default=0.4,
+                        help="宏观现象部分的权重 (默认: 0.6)")
     
     args = parser.parse_args()
     

@@ -16,7 +16,7 @@ python  -m LLMGGen.convert_prompt_csv --phase "j2c" \
 # for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech; do
 # for data_name in 8days_dytag_small_text_en weibo_daily weibo_tech imdb propagate_large_cn; do
 # for data_name in weibo_daily weibo_tech; do
-for data_name in imdb propagate_large_cn; do
+for data_name in weibo_daily; do
 
     export data_name
     
@@ -95,8 +95,10 @@ for data_name in imdb propagate_large_cn; do
     #     --pred_ratio 0.15 \
     #     --split test \
     #     --cm_order True\
-    #     --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix.csv \
-    #     --graph_list_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_list_matrix.csv 
+    #     --graph_macro_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_macro_matrix.csv
+    #     # --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix.csv \
+    #     # --graph_list_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_list_matrix.csv \
+       
         
     # python -m LLMGGen.eval_utils.eval_src_edges \
     #     --data_root $data_root \
@@ -109,31 +111,22 @@ for data_name in imdb propagate_large_cn; do
     #     --edge_msg \
     #     --graph_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_matrix_msg.csv
     
-    # python -m LLMGGen.eval_utils.eval_src_edges \
-    #     --data_root $data_root \
-    #     --data_name $data_name \
-    #     --time_window $time_window --bwr $bwr --use_feature bert \
-    #     --pred_ratio 0.15 \
-    #     --split test \
-    #     --cm_order True\
-    #     --graph_macro_report_path LLMGGen/reports/baselines/${data_name}/test/inference/graph_macro_matrix.csv
-        
         
     # query: idgg
-    for llm in $tdgg_rl_query_model
-    do
-        export llm=${llm}
-        export llm_save_root=LLMGGen/results/${llm}
-        export report_save_root=LLMGGen/reports/${llm}
-        # for mode in process_inf eval_inf
-        for mode in eval_inf
-        do
-            export mode=${mode}
-            bash LLMGGen/scripts/postprocess_ggen_loop.sh
-        done
-    done
+    # for llm in $tdgg_rl_query_model
+    # do
+    #     export llm=${llm}
+    #     export llm_save_root=LLMGGen/results/${llm}
+    #     export report_save_root=LLMGGen/reports/${llm}
+    #     # for mode in process_inf eval_inf
+    #     for mode in eval_inf
+    #     do
+    #         export mode=${mode}
+    #         bash LLMGGen/scripts/postprocess_ggen_loop.sh
+    #     done
+    # done
 
-    # edge preprocess: idgg
+    # gen edge prompt: idgg
     # for llm in $tdgg_rl_edge_model
     # do
     #     export query_llm=$tdgg_rl_query_model
@@ -142,7 +135,8 @@ for data_name in imdb propagate_large_cn; do
     #     export llm_save_root=LLMGGen/results/${llm}
     #     export report_save_root=LLMGGen/reports/${llm}
     #     export dx_src_path=$dx_src_root/test_degree.pt 
-    #     for mode in pre_process_inf
+    #     # for mode in pre_process_inf
+    #     for mode in pre_process_inf_broadcast 
     #     do
     #         export mode=${mode}
     #         export model_config_name=${llm}
@@ -151,28 +145,29 @@ for data_name in imdb propagate_large_cn; do
     # done
     
     # # edge: idgg
-    # for llm in $tdgg_rl_edge_model
-    # do
-    #     export llm=${llm}
-    #     export llm_save_root=LLMGGen/results/${llm}
-    #     export report_save_root=LLMGGen/reports/${llm}
-    #     for mode in process_inf eval_inf
-    #     do
-    #         export mode=${mode}
-    #         bash LLMGGen/scripts/postprocess_edge_loop.sh 
-    #     done
-    # done
+    for llm in $tdgg_rl_edge_model
+    do
+        export llm=${llm}
+        export llm_save_root=LLMGGen/results/${llm}
+        export report_save_root=LLMGGen/reports/${llm}
+        # for mode in process_inf eval_inf
+        for mode in process_inf_broadcast 
+        do
+            export mode=${mode}
+            bash LLMGGen/scripts/postprocess_edge_loop.sh 
+        done
+    done
 
 
     #### seqential data
 
     # query: idgg
-    # for llm in $tdgg_rl_seq_query_model
+    # for llm in $tdgg_rl_seq_query_model qwen3_sft
     # do
     #     export llm=${llm}
     #     export llm_save_root=LLMGGen/results/${llm}
     #     export report_save_root=LLMGGen/reports/${llm}
-    #     for mode in process_inf eval_inf
+    #     for mode in eval_inf
     #     do
     #         export mode=${mode}
     #         bash LLMGGen/scripts/postprocess_seq_ggen_loop.sh

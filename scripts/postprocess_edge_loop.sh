@@ -22,6 +22,14 @@ set_inf_paths() {
     graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix_msg.csv"
 }
 
+set_inf_paths_broadcast() {
+    query_result_path="${query_llm_save_root}/${data_name}/test/inference/query_ggen.csv"
+    edge_save_path="${llm_save_root}/${data_name}/test/inference/edge_text_examples_broadcast.csv"
+    edge_result_path="${llm_save_root}/${data_name}/test/inference/edge_ggen_broadcast.csv"
+    edge_text_result_path="${llm_save_root}/${data_name}/test/inference/edge_text_eval_broadcast_prompt.csv"
+    graph_report_path="${report_save_root}/${data_name}/test/inference/graph_matrix_broadcast_msg.csv"
+}
+
 # === Main Logic ===
 case "$mode" in
     "process_tf")
@@ -73,6 +81,42 @@ case "$mode" in
             --query_result_path "$query_result_path" \
             --model_config_name "$model_config_name" \
             --infer_edge
+        ;;
+    "pre_process_inf_broadcast")
+        echo "Mode: pre-Process idgg edge"
+        set_inf_paths_broadcast
+        python -m LLMGGen.src_edge_offline \
+            --data_root "$data_root" \
+            --data_name "$data_name" \
+            --time_window $time_window \
+            --bwr $bwr \
+            --use_feature bert \
+            --pred_ratio 0.15 \
+            --split test \
+            --cm_order True \
+            --save_root "$save_root" \
+            --dx_src_path "${dx_src_root}/test_degree.pt" \
+            --query_result_path "$query_result_path" \
+            --model_config_name "$model_config_name" \
+            --infer_edge \
+            --broadcast
+        ;;
+    "process_inf_broadcast")
+        echo "Mode: Process idgg edge"
+        set_inf_paths_broadcast
+        python -m LLMGGen.src_edge_offline \
+            --data_root "$data_root" \
+            --data_name "$data_name" \
+            --time_window $time_window \
+            --bwr $bwr \
+            --use_feature bert \
+            --pred_ratio 0.15 \
+            --split test \
+            --cm_order True \
+            --dx_src_path "${dx_src_root}/test_degree.pt" \
+            --edge_save_path "$edge_save_path" \
+            --edge_result_path "$edge_result_path" \
+            --process_edge_result
         ;;
     "process_inf")
         echo "Mode: Process idgg edge"

@@ -94,8 +94,8 @@ case "$mode" in
             --cm_order True \
             --graph_result_path "$query_result_path" \
             --graph_macro_report_path "$graph_macro_report_path" \
-            --graph_report_path "$graph_report_path" \
-            --graph_list_report_path "$graph_list_report_path" \
+            # --graph_report_path "$graph_report_path" \
+            # --graph_list_report_path "$graph_list_report_path" \
         ;;
     "help"|"")
         echo "Usage: mode={process_tf|eval_tf|process_inf|eval_inf}"

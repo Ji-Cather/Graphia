@@ -68,7 +68,7 @@ def plot_idgg_radar(scores_file_path="LLMGGen/reports/idgg_social_fidelity_score
         ax.set_ylim(0, 1)
         
         # 保存图片
-        output_path = Path(output_dir) / f"idgg_radar_{dataset}.png"
+        output_path = Path(output_dir) / f"idgg_radar_{dataset}.pdf"
         plt.tight_layout()
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -156,7 +156,7 @@ def plot_idgg_radar_comparison(scores_file_path="LLMGGen/reports/idgg_social_fid
     fig.legend(handles, labels, loc='upper right', bbox_to_anchor=(0.9, 0.1))
     
     # 保存图片
-    output_path = Path(output_dir) / "idgg_radar_comparison.png"
+    output_path = Path(output_dir) / "idgg_radar_comparison.pdf"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -193,7 +193,7 @@ def plot_score_distributions(scores_file_path="LLMGGen/reports/idgg_social_fidel
         axes[idx].tick_params(axis='x', rotation=45)
     
     plt.tight_layout()
-    output_path = Path(output_dir) / "idgg_score_distributions.png"
+    output_path = Path(output_dir) / "idgg_score_distributions.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     
@@ -201,7 +201,7 @@ def plot_score_distributions(scores_file_path="LLMGGen/reports/idgg_social_fidel
 
 def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_fidelity_scores.csv",
                                 output_dir="LLMGGen/reports/figures/",
-                                figsize=(12, 10)):
+                                figsize=(10, 8)):
     """
     绘制格式化标签的整体雷达图，突出显示 LLMGGen 模型
     
@@ -240,7 +240,12 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
     avg_scores = df.groupby('model')[metrics].mean().reset_index()
     
     # 格式化指标名称（首字母大写，下划线变空格）
-    formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
+    format_metric_map = {
+        "macro_structure_score": r"$S_\text{structure}$",
+        "macro_phenomenon_score": r"$S_\text{phenomenon}$",
+        "idgg_social_fidelity_score": r"$S_\text{IDGG}$"
+    }
+    formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
     
     # 定义模型绘制顺序
     model_order = [
@@ -249,8 +254,8 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
         'Tigger',
         'GAG-general',
         'Qwen3-8b-sft',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 按照指定顺序重新排列数据
@@ -282,8 +287,8 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
         'Tigger': '#9467bd', 
         'GAG-general': '#f7b84d',
         'Qwen3-8b-sft': '#ff7f0e',  #
-        'LLMGGen-seq': '#d62728',
-        'LLMGGen': '#17becf'
+        'Graphia-seq': '#d62728',
+        'Graphia': '#17becf'
     }
     
     # 绘制每个模型的数据
@@ -296,7 +301,7 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
         color = color_map.get(model_name, plt.cm.tab10(idx))
         
         # 设置线条属性
-        if model_name in ['LLMGGen-seq', 'LLMGGen']:
+        if model_name in ['Graphia-seq', 'Graphia']:
             linewidth = 4
             alpha = 1.0
             zorder = 10  # 确保在最上层
@@ -314,11 +319,11 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
     
     # 添加标签
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(formatted_metrics, fontsize=13, fontweight='bold')
+    ax.set_xticklabels(formatted_metrics, fontsize=30, fontweight='bold')
     
     # 设置图表样式
     ax.set_ylim(0, 1)
-    ax.tick_params(axis='y', labelsize=12)  # 设置径向标签字体大小
+    ax.tick_params(axis='y', labelsize=24)  # 设置径向标签字体大小
     ax.grid(True, alpha=0.3)
     
     # 设置标题
@@ -326,15 +331,15 @@ def plot_formatted_overall_radar(scores_file_path="LLMGGen/reports/idgg_social_f
     #           size=16, fontweight='bold', pad=30)
     
     # 添加图例（放在图表外部）
-    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), 
-               fontsize=16, frameon=True, fancybox=True, shadow=True)
+    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), ncols = 2,
+               fontsize=22, frameon=True, fancybox=True, shadow=True)
     
     # 美化网格
     ax.spines['polar'].set_visible(False)
     ax.set_facecolor('#f8f9fa')
     
     # 保存图片
-    output_path = Path(output_dir) / "formatted_overall_idgg_radar.png"
+    output_path = Path(output_dir) / "formatted_overall_idgg_radar.pdf"
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
@@ -396,8 +401,8 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
         'Tigger',
         'GAG-general',
         'Qwen3-8b-sft',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 定义颜色映射
@@ -407,22 +412,29 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
         'Tigger': '#9467bd', 
         'GAG-general': '#f7b84d',
         'Qwen3-8b-sft': '#ff7f0e',  #
-        'LLMGGen-seq': '#d62728',
-        'LLMGGen': '#17becf'
+        'Graphia-seq': '#d62728',
+        'Graphia': '#17becf'
     }
     
     # 获取所有数据集
-    datasets = [
-        "Propagate-En",
-        'Propagate-Zh',
-        "imdb",
-        "weibo_daily",
-        "weibo_tech"
-    ]
+    dataset_rename_map = {
+        '8days_dytag_small_text_en': 'Propagate-En',
+        'propagate_large_cn': 'Propagate-Zh'
+    }
+    df["dataset"] = df['dataset'].replace(dataset_rename_map)
+    datasets = df['dataset'].unique()
+    
+    # [
+    #     "Propagate-En",
+    #     'Propagate-Zh',
+    #     "imdb",
+    #     "weibo_daily",
+    #     "weibo_tech"
+    # ]
     n_datasets = len(datasets)
     
     # 计算子图布局
-    cols = min(3, n_datasets)
+    cols = min(2, n_datasets)
     rows = (n_datasets + cols - 1) // cols
     
     # 创建大图
@@ -438,7 +450,12 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
         axes = axes.flatten()
     
     # 格式化指标名称（首字母大写，下划线变空格）
-    formatted_metrics = [metric.replace('_', ' ').title() for metric in metrics]
+    format_metric_map = {
+        "macro_structure_score": r"$S_\text{structure}$",
+        "macro_phenomenon_score": r"$S_\text{phenomenon}$",
+        "idgg_social_fidelity_score": r"$S_\text{IDGG}$"
+    }
+    formatted_metrics = [format_metric_map.get(metric, metric) for metric in metrics]
     
     # 为每个数据集绘制雷达图
     for idx, dataset in enumerate(datasets):
@@ -476,7 +493,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
             color = color_map.get(model_name, plt.cm.tab10(_))
             
             # 设置线条属性
-            if model_name in ['LLMGGen-seq', 'LLMGGen']:
+            if model_name in ['Graphia-seq', 'Graphia']:
                 linewidth = 4
                 alpha = 1.0
                 zorder = 10  # 确保在最上层
@@ -494,17 +511,17 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
         
         # 添加标签
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(formatted_metrics, fontsize=10, fontweight='bold')
+        ax.set_xticklabels(formatted_metrics, fontsize=26, fontweight='bold')
         
         # 设置图表样式
         ax.set_ylim(0, 1)
-        ax.tick_params(axis='y', labelsize=8)  # 设置径向标签字体大小
+        ax.tick_params(axis='y', labelsize=24)  # 设置径向标签字体大小)  # 设置径向标签字体大小
         ax.grid(True, alpha=0.3)
         
         # 格式化数据集名称（下划线变空格，首字母大写）
         formatted_dataset_name = dataset.replace('_', ' ').title()
         # 设置标题
-        ax.set_title(f'{formatted_dataset_name}', size=12, fontweight='bold', pad=20)
+        ax.set_title(f'{formatted_dataset_name}', size=16, fontweight='bold', pad=20)
         
         # 美化网格
         ax.spines['polar'].set_visible(False)
@@ -515,15 +532,43 @@ def plot_formatted_dataset_radar_combined(scores_file_path="LLMGGen/reports/idgg
         fig.delaxes(axes[idx])
     
     # 添加统一图例（放在图表下方）
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.015), 
-               fontsize=16, frameon=True, fancybox=True, shadow=True, ncol=3)
+    # 获取第一个和倒数第二个子图的图例信息
+    handles1, labels1 = axes[0].get_legend_handles_labels()
+    handles2, labels2 = axes[-2].get_legend_handles_labels()
+
+    # 合并图例信息
+    all_handles = handles1 + handles2
+    all_labels = labels1 + labels2
+
+    # 去重同时保持model_order中定义的顺序
+    unique_handles, unique_labels = [], []
+    label_set = set()
+
+    # 按照model_order的顺序添加图例项
+    for model_name in model_order:
+        for h, l in zip(all_handles, all_labels):
+            if l == model_name and l not in label_set:
+                unique_handles.append(h)
+                unique_labels.append(l)
+                label_set.add(l)
+                break
+
+    # 添加任何可能遗漏的模型（不在model_order中定义的）
+    for h, l in zip(all_handles, all_labels):
+        if l not in label_set:
+            unique_handles.append(h)
+            unique_labels.append(l)
+            label_set.add(l)
+
+    # 添加统一图例（放在图表下方）
+    fig.legend(unique_handles, unique_labels, loc='lower center', bbox_to_anchor=(0.5, -0.015), 
+            fontsize=18, frameon=True, fancybox=True, shadow=True, ncol=4)
     
     # 调整布局
     plt.tight_layout()
     
     # 保存图片
-    output_path = Path(output_dir) / "formatted_idgg_combined_radar.png"
+    output_path = Path(output_dir) / "formatted_idgg_combined_radar.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight', 
                 facecolor='white', edgecolor='none')
     plt.close()

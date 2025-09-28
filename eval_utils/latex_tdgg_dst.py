@@ -30,8 +30,8 @@ def format_latex_table_by_dataset(df, columns, caption="", label="", score_colum
     latex_lines.append(f"\\label{{{label}}}")
     latex_lines.append("\\begin{tabular}{llrrrrrrr}")
     latex_lines.append("\\toprule")
-    latex_lines.append("Dataset & Model & \\multicolumn{2}{c}{Hub} & \\multicolumn{2}{c}{Normal} & \\multicolumn{2}{c}{All} \\\\")
-    latex_lines.append(" &  & Hit@100 & Recall@100 & Hit@100 & Recall@100 & Hit@100 & Recall@100 & Score \\\\")
+    latex_lines.append("Dataset & Model & \\multicolumn{2}{c}{Easy} & \\multicolumn{2}{c}{Hard} & \\multicolumn{2}{c}{All} \\\\")
+    latex_lines.append(" &  & Hit@100 & Recall@100 & Hit@100 & Recall@100 & Hit@100 & Recall@100 \\\\")
     latex_lines.append("\\midrule")
     
     # 定义模型顺序
@@ -41,8 +41,8 @@ def format_latex_table_by_dataset(df, columns, caption="", label="", score_colum
         'Qwen3-32B',
         'DeepSeek-Q-32B',
         'Llama3-70B',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 按数据集分组处理
@@ -135,7 +135,7 @@ def format_latex_table_recall_only(df, columns, caption="", label="", score_colu
     latex_lines.append(f"\\label{{{label}}}")
     latex_lines.append("\\begin{tabular}{lrrrrr}")
     latex_lines.append("\\toprule")
-    latex_lines.append("Dataset & Model & Hub & Normal & All & Score \\\\")
+    latex_lines.append("Dataset & Model & Easy & Hard & All \\\\")
     latex_lines.append("\\midrule")
     
     # 定义模型顺序
@@ -145,8 +145,8 @@ def format_latex_table_recall_only(df, columns, caption="", label="", score_colu
         'Qwen3-32B',
         'DeepSeek-Q-32B',
         'Llama3-70B',
-        'LLMGGen-seq',
-        'LLMGGen'
+        'Graphia-seq',
+        'Graphia'
     ]
     
     # 按数据集分组处理
@@ -226,10 +226,10 @@ def generate_retrieval_table(df, output_path):
     """
     # 获取retrieval相关的列，按特定顺序排列
     retrieval_columns = [
-        'retrieval_hit@100_Hub', 'retrieval_recall@100_Hub',
-        'retrieval_hit@100_Normal', 'retrieval_recall@100_Normal',
-        'retrieval_hit@100_All', 'retrieval_recall@100_All',
-        'retrieval_score'
+        'selection_hit@100_Easy', 'selection_recall@100_Easy',
+        'selection_hit@100_Hard', 'selection_recall@100_Hard',
+        'selection_hit@100_All', 'selection_recall@100_All',
+        # 'selection_score'
     ]
     
     # 生成LaTeX表格
@@ -238,7 +238,7 @@ def generate_retrieval_table(df, output_path):
         retrieval_columns,
         caption="Retrieval Metrics for Different Datasets",
         label="tab:retrieval_metrics",
-        score_column="retrieval_score"
+        score_column="selection_score"
     )
     
     # 保存到文件
@@ -254,10 +254,10 @@ def generate_retrieval_recall_table(df, output_path):
     """
     # 获取recall@100相关的列
     recall_columns = [
-        'retrieval_recall@100_Hub',
-        'retrieval_recall@100_Normal',
-        'retrieval_recall@100_All',
-        'retrieval_score'
+        'selection_recall@100_Easy',
+        'selection_recall@100_Hard',
+        'selection_recall@100_All',
+        # 'selection_score'
     ]
     
     # 生成LaTeX表格
@@ -266,7 +266,7 @@ def generate_retrieval_recall_table(df, output_path):
         recall_columns,
         caption="Retrieval Recall@100 Metrics for Different Datasets",
         label="tab:retrieval_recall_metrics",
-        score_column="retrieval_score"
+        score_column="selection_score"
     )
     
     # 保存到文件
@@ -364,7 +364,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="生成TDGG评估结果的LaTeX表格")
     parser.add_argument("--input_file", type=str,
-                        default="LLMGGen/reports/tdgg_social_fidelity_scores.csv",
+                        default="LLMGGen/reports/tdgg_social_fidelity_scores_cut.csv",
                         help="输入的CSV文件路径")
     parser.add_argument("--retrieval_output", type=str,
                         default="LLMGGen/reports/latex_retrieval_table.tex",
