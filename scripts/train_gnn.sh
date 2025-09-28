@@ -1,9 +1,7 @@
 # train lp reward model
 epochs=200
-# save_root=/data/oss_bucket_0/jjr/LLMGGen
-# data_root=/data/oss_bucket_0/jjr/LLMGGen
-save_root=/data/jiarui_ji/llmggen/LLMGGen
-data_root=/data/jiarui_ji/llmggen/LLMGGen/data
+save_root=LLMGGen
+data_root=LLMGGen/data
 
 # python -m LLMGGen.train_link_prediction --data_name 8days_dytag_small_text_en --pred_ratio 0.15 --time_window 86400 --bwr 1980 --use_feature bert --cm_order --num_runs 1 --gpu 0 --num_epochs $epochs --patience 5 --model_name GraphMixer --num_layers 2 --num_neighbors 20 --dropout 0.1 --sample_neighbor_strategy recent --load_best_configs --data_root ${data_root}/ --save_root ${save_root}/lp_models/ >> log_gnn_lp.txt 2>&1 &
 

@@ -1,6 +1,5 @@
 
 # query graph
-export data_root=/data/oss_bucket_0/jjr/LLMGGen
 export data_root=LLMGGen/data
 
 ## 8days_dytag_small_text_en
@@ -20,19 +19,7 @@ dx_seq_model_name=seq_deg
 # dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
 # dx_seq_model_name=seq_deg
 
-# # propagate_large_cn
-# export data_name=propagate_large_cn
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-# dx_seq_model_name=seq_deg
 
-# imdb
-# export data_name=imdb
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-# dx_seq_model_name=seq_deg
-
-# export dx_src_root=/home/jijiarui.jjr/ROLL/saved_results_deg/${dx_model_name}/${data_name}
-
-# save_root="/home/jijiarui.jjr/ROLL/LLMGGen"
 
 export dx_src_root=/data/jiarui_ji/llmggen/LLMGGen/saved_results_deg/${dx_model_name}/${data_name}
 export dx_seq_model_root=/data/jiarui_ji/llmggen/LLMGGen/saved_results_deg/${dx_seq_model_name}/${data_name}

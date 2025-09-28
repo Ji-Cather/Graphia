@@ -1,6 +1,5 @@
 export data_root=LLMGGen/data
-# export save_root="/home/jijiarui.jjr/ROLL/LLMGGen"
-export save_root="/data/jiarui_ji/llmggen/LLMGGen"
+export save_root="LLMGGen/"
 export dx_src_root=LLMGGen/saved_results_deg/${dx_model_name}/${data_name}
 export HF_ENDPOINT=https://hf-mirror.com
 
