@@ -117,5 +117,5 @@ IDGG评估：Graphia/eval_utils/eval_idgg.py
 
 ## 致谢
 感谢以下开源项目和研究团队的支持：
-- [ROLL](git@github.com:alibaba/ROLL.git) - 强化学习训练框架
+- [ROLL](https://github.com/alibaba/ROLL.git) - 强化学习训练框架
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - 文本动态图Benchmark

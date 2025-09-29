@@ -116,5 +116,5 @@ Welcome to submit Issues and Pull Requests to help improve the project.
 ## Acknowledgements
 
 Thanks to the following open-source projects and research teams for their support:
-- [ROLL](git@github.com:alibaba/ROLL.git) - Reinforcement learning training framework
+- [ROLL](https://github.com/alibaba/ROLL.git) - Reinforcement learning training framework
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - Text dynamic graph benchmark
