@@ -1,0 +1,213 @@
+defaults:
+  - ../config/envs@_here_
+  - ../config/deepspeed_zero@_here_
+  - ../config/deepspeed_zero2@_here_
+  - ../config/deepspeed_zero3@_here_
+  - ../config/deepspeed_zero3_cpuoffload@_here_
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+
+dataset_name: 8days_dytag_small_text_en
+
+
+
+exp_name: ${dataset_name}_rl_query
+pretrain: Qwen/Qwen3-8B
+reward_pretrain: Qwen/Qwen3-8B
+
+
+seed: 42
+per_device_train_batch_size: 4
+
+logging_dir: ./output/logs
+output_dir: ./output
+system_envs:
+  USE_MODELSCOPE: '1'
+
+checkpoint_config:
+  type: file_system
+
+track_with: tensorboard
+tracker_kwargs:
+  log_dir: log/grpo_${dataset_name}
+
+num_gpus_per_node: 8
+
+max_steps: 501
+save_steps: 100
+logging_steps: 1
+eval_steps: 10
+resume_from_checkpoint: false
+
+# rollout_batch_size: 64 # prompt
+rollout_batch_size: 8  # prompt
+prompt_length: 2048 # nothink
+response_length: 512
+
+
+num_return_sequences_in_group: 8
+ppo_epochs: 1
+adv_estimator: grpo
+
+# clip
+value_clip: 0.5
+reward_clip: 20
+advantage_clip: 2.0
+dual_clip_loss: true
+
+# normalize
+reward_norm: group
+reward_shift: false
+reward_scale: false
+
+# data mask
+max_len_mask: true
+difficulty_mask: true
+difficulty_low_threshold: 0.1
+difficulty_high_threshold: 0.95
+error_max_len_clip: false
+
+# data weight
+difficulty_loss_weight: false
+length_loss_weight: false
+
+# reward
+add_token_level_kl: false
+
+# advantage
+whiten_advantages: true
+
+
+
+
+validation:
+  data_args:
+    template: qwen2_5
+    file_name:
+      - prompts/${dataset_name}/val/teacher_forcing/query_easy_examples.jsonl
+    prompt: prompt
+  generating_args:
+    # top_p: 0.6
+    # top_k: 50
+    # num_beams: 1
+    # temperature: 0.6
+    top_p: 0.99
+    top_k: 100
+    num_beams: 1
+    temperature: 0.99
+    num_return_sequences: 1
+  eval_steps: 10
+
+actor_train:
+  model_args:
+    flash_attn: fa2
+    disable_gradient_checkpointing: false
+    dtype: bf16
+    model_type: ~
+  training_args:
+    learning_rate: 1.0e-6
+    weight_decay: 0
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 4
+    warmup_steps: 20
+    # # debug
+    # warmup_steps: 0
+    num_train_epochs: 50
+  data_args:
+    template: qwen2_5
+    file_name:
+      - prompts/${dataset_name}/train/teacher_forcing/query_examples.jsonl
+    domain_interleave_probs:
+      dst_rule: 1.0
+    dataset_dir: prompts/${dataset_name}/train/teacher_forcing/
+    prompt: prompt
+    preprocessing_num_workers: 16
+  strategy_args:
+    strategy_name: megatron_train
+    strategy_config:
+      tensor_model_parallel_size: 1
+      pipeline_model_parallel_size: 1
+      expert_model_parallel_size: 1
+      use_distributed_optimizer: true
+      recompute_granularity: full
+  device_mapping: list(range(0,8))
+  infer_batch_size: 4
+
+actor_infer:
+  model_args:
+    flash_attn: fa2
+    disable_gradient_checkpointing: true
+    dtype: bf16
+  generating_args:
+    max_new_tokens: ${response_length}
+    top_p: 0.99
+    top_k: 100
+    num_beams: 1
+    temperature: 0.99
+    num_return_sequences: ${num_return_sequences_in_group}
+  data_args:
+    template: qwen2_5
+  strategy_args:
+    strategy_name: vllm
+    strategy_config:
+      gpu_memory_utilization: 0.6
+      block_size: 16
+      max_model_len: 8000
+  device_mapping: list(range(0,8))
+  infer_batch_size: 4
+
+reference:
+  model_args:
+    flash_attn: fa2
+    disable_gradient_checkpointing: true
+    dtype: bf16
+    model_type: ~
+  data_args:
+    template: qwen2_5
+  strategy_args:
+    strategy_name: megatron_infer
+    strategy_config:
+      tensor_model_parallel_size: 1
+      pipeline_model_parallel_size: 1
+      expert_model_parallel_size: 1
+  device_mapping: list(range(0,8))
+  infer_batch_size: 4
+
+rewards:
+  dst_rule:
+    # NOTE: dst map 需要gpu load embeddding模型
+    worker_cls: roll.pipeline.rlvr.rewards.dst_gnn_judge_reward_worker.DstGNNRewardWorker
+    tag_included: [train, val] 
+    model_args:
+      model_name_or_path: ${reward_pretrain}
+    data_args:
+      template: qwen2_5
+    
+    bert_args:
+      model_name_or_path: prajjwal1/bert-tiny
+
+    gnn_args:
+      sample_neighbor_strategy: recent
+      time_scaling_factor: 1e-6
+      seed: 42
+      model_name: GraphMixer
+      save_model_path: Graphia/lp_models/saved_models/GraphMixer/${dataset_name}/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl
+
+    environment_data_args:
+      pred_ratio: 0.15
+      root: Graphia/${dataset_name}
+      time_window: 86400
+      bwr: 1980
+      use_feature: bert
+      cm_order: True
+      force_reload: False
+    reward_type: overlap_reward
+    reward_args:
+      alpha: 0.5 # optional, for weight reward
+      recall_alpha: 3
+
+    infer_batch_size: 4
+    world_size: 8
