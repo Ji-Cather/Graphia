@@ -2,6 +2,19 @@
 
 Graphia is a reinforcement learning-based social network graph generation framework.
 
+
+## Dataset
+
+We have published the processed versions of weibo-tech and weibo-daily datasets. 
+The propagate-en data will be made public after the paper is accepted.
+
+Dataset link: https://huggingface.co/datasets/Cather111/Graphia_data
+
+Please download and place the dataset in the following directory:
+```
+Graphia/data
+```
+
 ## Directory Structure
 
 ```
@@ -118,3 +131,6 @@ Welcome to submit Issues and Pull Requests to help improve the project.
 Thanks to the following open-source projects and research teams for their support:
 - [ROLL](https://github.com/alibaba/ROLL.git) - Reinforcement learning training framework
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - Text dynamic graph benchmark
+
+
+
