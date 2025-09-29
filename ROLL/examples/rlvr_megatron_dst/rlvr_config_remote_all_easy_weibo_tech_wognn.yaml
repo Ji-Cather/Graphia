@@ -113,9 +113,8 @@ actor_train:
     file_name:
       - prompts/${dataset_name}/train/teacher_forcing/edge_text_examples.jsonl
     domain_interleave_probs:
-      edge_text_rule: 0.2
-      edge_rule: 0.2
-      dst_rule: 0.6
+      edge_text_rule: 0.5
+      edge_rule: 0.5
     dataset_dir: prompts/${dataset_name}/train/teacher_forcing/
     prompt: prompt
     preprocessing_num_workers: 16

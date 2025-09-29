@@ -8,7 +8,7 @@ Graphia 是一个基于强化学习的社会网络图生成框架。
 我们公开了weibo-tech和weibo-daily数据集的处理版本。
 propagate-en数据将在论文录用后公开。
 
-数据集链接：https://huggingface.co/datasets/Cather111/Graphia_data
+数据集链接：https://www.modelscope.cn/datasets/cather111/Graphia_data
 
 请下载并将数据集放置在以下目录中：
 ```
