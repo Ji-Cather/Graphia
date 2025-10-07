@@ -15,6 +15,16 @@ Please download and place the dataset in the following directory:
 Graphia/data
 ```
 
+## Checkpoints
+
+Graphia Models trained on Weibo Tech are available at the following links:
+https://www.modelscope.cn/models/cather111/Graphia-Q
+https://www.modelscope.cn/models/cather111/Graphia-E
+
+## Baselines
+
+
+
 ## Directory Structure
 
 ```
