@@ -22,8 +22,8 @@ https://www.modelscope.cn/models/cather111/Graphia-Q
 https://www.modelscope.cn/models/cather111/Graphia-E
 
 ## Baselines
-
-
+为了方便复现实验结果，我们将所有的基线模型代码已上传至GitHub：
+git@github.com:Ji-Cather/Graphia_baselines.git
 
 ## Directory Structure
 
@@ -141,6 +141,8 @@ Welcome to submit Issues and Pull Requests to help improve the project.
 Thanks to the following open-source projects and research teams for their support:
 - [ROLL](https://github.com/alibaba/ROLL.git) - Reinforcement learning training framework
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - Text dynamic graph benchmark
+- [tigger](https://github.com/data-iitd/tigger) - Dynamic graph generation model
+- [DGGen](https://github.com/ryienh/DGGen) - Dynamic graph generation model
 
-
-
+## Contact Information
+If you have any questions or suggestions, please contact us at jijiarui@ruc.edu.cn
