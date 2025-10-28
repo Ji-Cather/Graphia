@@ -13,3 +13,4 @@ __pycache__/
 baselines/
 lp_models/
 Graphia_data/
+Graphia_baselines/
