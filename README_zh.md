@@ -15,6 +15,9 @@ propagate-en数据将在论文录用后公开。
 Graphia/data
 ```
 
+## 基线模型代码
+为了方便复现实验结果，我们将所有的基线模型代码已上传至GitHub：
+[Graphia_baselines](https://github.com/Ji-Cather/Graphia_baselines)
 
 
 ## 目录结构

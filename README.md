@@ -22,8 +22,7 @@ https://www.modelscope.cn/models/cather111/Graphia-Q
 https://www.modelscope.cn/models/cather111/Graphia-E
 
 ## Baselines
-为了方便复现实验结果，我们将所有的基线模型代码已上传至GitHub：
-git@github.com:Ji-Cather/Graphia_baselines.git
+To facilitate the reproduction of experimental results, we have uploaded all baseline model codes to: [Graphia_baselines](https://github.com/Ji-Cather/Graphia_baselines)
 
 ## Directory Structure
 
