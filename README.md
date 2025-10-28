@@ -5,7 +5,7 @@ Graphia is a reinforcement learning-based social network graph generation framew
 
 ## Dataset
 
-We have published the processed versions of weibo-tech and weibo-daily datasets. 
+We have published the processed versions of weibo-tech, weibo-daily, propagate-en(8days_dytag_small_text_en) datasets. 
 The propagate-en data will be made public after the paper is accepted.
 
 Dataset link: https://www.modelscope.cn/datasets/cather111/Graphia_data
