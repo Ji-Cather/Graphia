@@ -26,7 +26,6 @@ def df_to_latex_multidataset(df,
     df.columns = df.columns.str.strip()
     dataset_rename_map = {
         '8days_dytag_small_text_en': 'Propagate-En',
-       ,
         'weibo_daily':'Weibo Daily',
         'weibo_tech':'Weibo Tech',
     }

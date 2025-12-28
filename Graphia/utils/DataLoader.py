@@ -54,7 +54,8 @@ def get_idx_data_loader(indices_list: list, batch_size: int, shuffle: bool):
 
 class Data:
 
-    def __init__(self, src_node_ids: np.ndarray, dst_node_ids: np.ndarray, node_interact_times: np.ndarray, edge_ids: np.ndarray, labels: np.ndarray):
+    def __init__(self, src_node_ids: np.ndarray, dst_node_ids: np.ndarray, node_interact_times: np.ndarray, edge_ids: np.ndarray, labels: np.ndarray,
+                 edge_ids_split: np.ndarray = None,):
         """
         Data object to store the nodes interaction information.
         :param src_node_ids: ndarray
@@ -71,6 +72,7 @@ class Data:
         self.num_interactions = len(src_node_ids)
         self.unique_node_ids = set(src_node_ids) | set(dst_node_ids)
         self.num_unique_nodes = len(self.unique_node_ids)
+        self.edge_ids_split = edge_ids_split
         
 
 
@@ -106,7 +108,8 @@ def get_link_prediction_data(args):
     """
     if args.data_name in ["8days_dytag_small_text_en",
                         "weibo_daily",
-                        "weibo_tech"]:
+                        "weibo_tech",
+                        "weibo_daily_long"]:
         # train for dytag dataset
 
         import torch  
@@ -236,52 +239,58 @@ def get_edge_classification_data(args):
                         full_data_temp.t.cpu().numpy(), 
                         full_data_temp.edge_id_all.cpu().numpy(), 
                         full_data_temp.label.cpu().numpy(), 
+                        full_data_temp.edge_id.cpu().numpy(),
                         )
-        edge_ids_seen = set(train_data_temp.edge_id_all.cpu().numpy().tolist())
         train_data = Data(
             train_data_temp.src.cpu().numpy(),
             train_data_temp.dst.cpu().numpy(),
             train_data_temp.t.cpu().numpy(),
             train_data_temp.edge_id_all.cpu().numpy(),
             train_data_temp.label.cpu().numpy(), 
+            train_data_temp.edge_id.cpu().numpy(),
         )
         val_edge_ids = val_data_temp.edge_id_all.cpu().numpy()
-        edge_unseen_mask = torch.tensor(np.array([eid not in edge_ids_seen for eid in val_edge_ids]))
+
+        val_edge_output_mask = (val_data_temp.t >= bwr_ctdg.val_data.unique_times[bwr_ctdg.val_data.input_len])
+
 
         val_data = Data(
-            val_data_temp.src.cpu().numpy()[edge_unseen_mask],
-            val_data_temp.dst.cpu().numpy()[edge_unseen_mask],
-            val_data_temp.t.cpu().numpy()[edge_unseen_mask],
-            val_data_temp.edge_id_all.cpu().numpy()[edge_unseen_mask],
-            val_data_temp.label.cpu().numpy()[edge_unseen_mask],
+            val_data_temp.src.cpu().numpy()[val_edge_output_mask],
+            val_data_temp.dst.cpu().numpy()[val_edge_output_mask],
+            val_data_temp.t.cpu().numpy()[val_edge_output_mask],
+            val_data_temp.edge_id_all.cpu().numpy()[val_edge_output_mask],
+            val_data_temp.label.cpu().numpy()[val_edge_output_mask],
+            val_data_temp.edge_id.cpu().numpy()[val_edge_output_mask],
         )
 
         new_node_val_data = Data(
-            val_data_temp.src[edge_unseen_mask & val_data_temp.new_node].cpu().numpy(),
-            val_data_temp.dst[edge_unseen_mask & val_data_temp.new_node].cpu().numpy(),
-            val_data_temp.t[edge_unseen_mask & val_data_temp.new_node].cpu().numpy(),
-            val_data_temp.edge_id_all[edge_unseen_mask & val_data_temp.new_node].cpu().numpy(),
-            val_data_temp.label[edge_unseen_mask & val_data_temp.new_node].cpu().numpy(),
-        )
-        edge_ids_seen = set(np.concatenate([train_data_temp.edge_id_all.cpu().numpy(),
-                                            val_data_temp.edge_id_all.cpu().numpy()
-                                            ]).tolist())
-        test_edge_ids = test_data_temp.edge_id_all.cpu().numpy()
-        edge_unseen_mask = torch.tensor(np.array([eid not in edge_ids_seen for eid in test_edge_ids]))
-
-        test_data = Data(
-            test_data_temp.src.cpu().numpy()[edge_unseen_mask],
-            test_data_temp.dst.cpu().numpy()[edge_unseen_mask],
-            test_data_temp.t.cpu().numpy()[edge_unseen_mask],
-            test_data_temp.edge_id_all.cpu().numpy()[edge_unseen_mask], 
-            test_data_temp.label.cpu().numpy()[edge_unseen_mask],
+            val_data_temp.src[val_edge_output_mask & val_data_temp.new_node].cpu().numpy(),
+            val_data_temp.dst[val_edge_output_mask & val_data_temp.new_node].cpu().numpy(),
+            val_data_temp.t[val_edge_output_mask & val_data_temp.new_node].cpu().numpy(),
+            val_data_temp.edge_id_all[val_edge_output_mask & val_data_temp.new_node].cpu().numpy(),
+            val_data_temp.label[val_edge_output_mask & val_data_temp.new_node].cpu().numpy(),
         )
         
-        new_node_test_data = Data(test_data_temp.src[edge_unseen_mask & test_data_temp.new_node].cpu().numpy(),  
-                        test_data_temp.dst[edge_unseen_mask & test_data_temp.new_node].cpu().numpy(),
-                        test_data_temp.t[edge_unseen_mask & test_data_temp.new_node].cpu().numpy(),
-                        test_data_temp.edge_id_all[edge_unseen_mask & test_data_temp.new_node].cpu().numpy(), 
-                        test_data_temp.label[edge_unseen_mask & test_data_temp.new_node].cpu().numpy(),
+
+
+        test_edge_output_mask = (test_data_temp.t >= bwr_ctdg.test_data.unique_times[bwr_ctdg.test_data.input_len])
+
+        test_data = Data(
+            test_data_temp.src.cpu().numpy()[test_edge_output_mask],
+            test_data_temp.dst.cpu().numpy()[test_edge_output_mask],
+            test_data_temp.t.cpu().numpy()[test_edge_output_mask],
+            test_data_temp.edge_id_all.cpu().numpy()[test_edge_output_mask], 
+            test_data_temp.label.cpu().numpy()[test_edge_output_mask],
+            test_data_temp.edge_id.cpu().numpy()[test_edge_output_mask],
+        )
+        
+        new_node_test_data = Data(
+                        test_data_temp.src[test_edge_output_mask & test_data_temp.new_node].cpu().numpy(),  
+                        test_data_temp.dst[test_edge_output_mask & test_data_temp.new_node].cpu().numpy(),
+                        test_data_temp.t[test_edge_output_mask & test_data_temp.new_node].cpu().numpy(),
+                        test_data_temp.edge_id_all[test_edge_output_mask & test_data_temp.new_node].cpu().numpy(), 
+                        test_data_temp.label[test_edge_output_mask & test_data_temp.new_node].cpu().numpy(),
+                        test_data_temp.edge_id.cpu().numpy()[test_edge_output_mask & test_data_temp.new_node],
                         )
         
         label_num = np.unique(full_data.labels).shape[0]

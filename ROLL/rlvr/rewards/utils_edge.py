@@ -10,8 +10,8 @@ from roll.distributed.scheduler.protocol import DataProto
 from roll.pipeline.rlvr.rewards.utils_parser import *                         
 
 
-from Graphia.load_gnn_judger import compute_src_dsts_score
-from Graphia.utils.bwr_ctdg import (BWRCTDGALLDataset, 
+from LLMGGen.load_gnn_judger import compute_src_dsts_score
+from LLMGGen.utils.bwr_ctdg import (BWRCTDGALLDataset, 
                                     BWRCTDGDataset,
                                     Dataset_Template)
 
@@ -439,7 +439,7 @@ if __name__ == "__main__":
         pred_ratio=0.15,
         bwr=1980,
         time_window=86400,
-        root="Graphia/data/8days_dytag_small_text_en",
+        root="Graphia/8days_dytag_small_text_en",
         use_feature="bert",
         cm_order=True,
     )
@@ -447,7 +447,7 @@ if __name__ == "__main__":
     # Initialize BERT embedder
     from roll.configs import ModelArguments
     bert_args = {
-        "model_name_or_path": "hf_cache/bert-tiny",
+        "model_name_or_path": "bert-tiny",
     }
     bert_args = from_dict(ModelArguments, bert_args)
     bert_embedder = BertEmbedder(bert_args, logger)

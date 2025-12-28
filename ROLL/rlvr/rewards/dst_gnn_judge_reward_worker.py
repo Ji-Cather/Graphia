@@ -25,8 +25,8 @@ logger = get_logger()  # 获取日志记录器实例
 
 from .utils_dst import *
 
-from Graphia.load_gnn_judger import create_link_prediction_model
-from Graphia.utils.utils import get_neighbor_sampler
+from LLMGGen.load_gnn_judger import create_link_prediction_model
+from LLMGGen.utils.utils import get_neighbor_sampler
 
 def get_repetition_penalty_reward(ngram_size: int, max_penalty: float):
     """
@@ -99,27 +99,28 @@ class DstGNNRewardWorker(Worker):
                     pipeline_config):
         # gpus = self.get_visible_gpus()
         # gpu_index = gpus[0]
-        device = "cpu"
+        
         self.bert_embedder = BertEmbedder(self.bert_args,
                                           logger=self.logger)
-        node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_num = \
-            self.mapper.get_link_prediction_data()
+        # device = "cpu"
+        # node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_num = \
+        #     self.mapper.get_link_prediction_data()
             
-        full_neighbor_sampler = get_neighbor_sampler(
-                data=full_data, 
-                sample_neighbor_strategy=self.gnn_args.sample_neighbor_strategy,
-                time_scaling_factor=self.gnn_args.time_scaling_factor, 
-                seed=self.gnn_args.seed)
+        # full_neighbor_sampler = get_neighbor_sampler(
+        #         data=full_data, 
+        #         sample_neighbor_strategy=self.gnn_args.sample_neighbor_strategy,
+        #         time_scaling_factor=self.gnn_args.time_scaling_factor, 
+        #         seed=self.gnn_args.seed)
         
-        self.gnn_judger = create_link_prediction_model(
-            model_name=self.gnn_args.model_name,
-            save_model_path=self.gnn_args.save_model_path,
-            node_raw_features=node_raw_features,
-            edge_raw_features=edge_raw_features,
-            data=full_data,
-            neighbor_sampler=full_neighbor_sampler,
-            device = device
-        )
+        # self.gnn_judger = create_link_prediction_model(
+        #     model_name=self.gnn_args.model_name,
+        #     save_model_path=self.gnn_args.save_model_path,
+        #     node_raw_features=node_raw_features,
+        #     edge_raw_features=edge_raw_features,
+        #     data=full_data,
+        #     neighbor_sampler=full_neighbor_sampler,
+        #     device = device
+        # )
 
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
@@ -169,10 +170,10 @@ class DstGNNRewardWorker(Worker):
                 "<|end▁of▁sentence|>").strip("<pad>").strip("<｜end of sentence｜>").strip("<endoftext>")
             # answer_text = extract_after_last_think(resp_text_without_sptoken)
 
-            parsed_resp = self.mapper.parse_response(resp_text_without_sptoken, 
+            parsed_resp, reward_dict = self.mapper.parse_response(resp_text_without_sptoken, 
                                                     self.logger) # dict
             # parsed_resp
-            assert isinstance(parsed_resp, dict)
+            assert isinstance(parsed_resp, dict), parsed_resp
             try:
                 candidate_dst_ids = parsed_resp["candidate_dst_ids"]
             except Exception as e:
@@ -186,13 +187,21 @@ class DstGNNRewardWorker(Worker):
                 "tag": tag,
             })
             
-            reward_dict, parsed_resp = self.mapper._collect_gnn_reward(
+            # reward_dict, parsed_resp = self.mapper._collect_gnn_reward(
+            #     reward_dict,
+            #     parsed_resp, 
+            #     self.bert_embedder, 
+            #     self.logger
+            #     self.gnn_args.model_name,  
+            #     self.gnn_judger,
+            #     global_step,
+            # )
+            reward_dict, parsed_resp = self.mapper._collect_reward(
+                reward_dict,
                 parsed_resp, 
                 self.bert_embedder, 
-                self.gnn_args.model_name,  
-                self.gnn_judger,
-                global_step,
-                self.logger)
+                self.logger
+                )
             
             self.logger.info(f"debug {src_idx}", reward_dict)
             

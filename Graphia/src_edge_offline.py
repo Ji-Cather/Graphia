@@ -477,6 +477,13 @@ def execute_search_dst_toolkit(
             # 对目标节点进行过滤
             try:
                 filter_rule_func = eval(filter_rule)
+                if isinstance(filter_rule_func,list):
+                    filter_rule_func_dict = {}
+                    for metric in filter_rule_func:
+                        for k,v in metric.items():
+                            filter_rule_func_dict[metric] = filter_rule_func[metric]
+                    filter_rule_func = filter_rule_func_dict
+
                 
                 filtered_dst_ids = []
                 for dst_id in dst_node_ids:
@@ -1226,7 +1233,7 @@ def main_idgg(dx_src_path: str = None):
                                 )
     
     
-        
+    query_all_examples = pd.DataFrame()
         
     
     for batch_idx, batch_data in tqdm(enumerate(data_ctdg_loader),
@@ -1793,6 +1800,7 @@ def process_query_result(
                  gen_col:str = "generate_results",
                  recall_common_neighbor: bool = True,
                  recall_inductive: bool = False,
+                 use_filter: bool = True,
                  ):
     
 
@@ -1856,7 +1864,9 @@ def process_query_result(
     print(f"解析失败的数量: {fail_count}")
 
     query_examples_all_result["success"] = [result["success"] for result in parsed_results]
-    for col in Dataset_Template[environment_data['data_name']]['node_text_cols']:
+    for col in [*Dataset_Template[environment_data['data_name']]['node_text_cols'],
+                "filter_rule"
+    ]:
         query_examples_all_result[col] = [result["parsed"].get(col, None) if result["success"] else None for result in parsed_results]
     
     
@@ -1899,8 +1909,13 @@ def process_query_result(
                 result[f'gnn_recall@{k2}'] = 0.0
                 result[f'gnn_hit@{k2}'] = 0
             continue
+
+        # if filter_rule is not None:
+        #     print("filter rule:", filter_rule)
         
         for k in [10, 50, 100]:
+            # if not use_filter:
+            #     filter_rule = None
             candidate_dst_ids = execute_search_dst_toolkit(query_text,
                                                             dx_src, 
                                                             dst_node_ids,
@@ -1990,11 +2005,15 @@ def process_query_result(
     result_dir = os.path.dirname(args.query_result_path).replace("Graphia/results", "Graphia/reports")
     os.makedirs(result_dir,exist_ok=True)
     
-    if not args.use_src_node_text:
-        df_summary.to_csv(os.path.join(result_dir, "dst_retrival_matrix_raw.csv"))
+    if not use_filter and not recall_common_neighbor:
+        save_path = os.path.join(result_dir, "dst_retrival_matrix_wo_filter_neighbor.csv")
+    elif not args.use_src_node_text:
+        save_path = os.path.join(result_dir, "dst_retrival_matrix_raw.csv")
     else:
         # with filter pipeline
-        df_summary.to_csv(os.path.join(result_dir, "dst_retrival_matrix.csv"))
+        save_path = os.path.join(result_dir, "dst_retrival_matrix.csv")
+    print("save_path:", save_path)
+    df_summary.to_csv(save_path)
 
 
 def process_query_result_group(
@@ -2443,9 +2462,20 @@ def process_edge_result(args,
         prompt_dir = os.path.dirname(args.edge_save_path).replace("results", "prompts")
         os.makedirs(prompt_dir, exist_ok=True)
 
+        
 
         eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt.csv'), index=False)
         edges_all.to_csv(args.edge_result_path, index=False)
+
+        # for qwen3 base, gnn comparsion experiment
+        for i in range(len(edges_all)):
+            eval_prompts.loc[i, "prompt"] = edges_all.loc[i, "prompt"]
+            eval_prompts.loc[i, "edge_text"] = edges_all.loc[i, "edge_text"]
+            eval_prompts.loc[i, "pred_edge_label"] = edges_all.loc[i, "edge_label"]
+            eval_prompts.loc[i, "gt_label"] = edges_all.loc[i, "gt_label"]
+            eval_prompts.loc[i, "gt_text"] = edges_all.loc[i, "gt_text"]
+        eval_prompts.to_csv(os.path.join(prompt_dir, 'edge_text_eval_prompt_temp.csv'), index=False)
+        ###
         
         print(f"Edge text examples prompt mean length: {eval_prompts['prompt'].str.len().mean():.2f}")
         print(f"Edge text examples prompt max length: {eval_prompts['prompt'].str.len().max()}")
@@ -2960,14 +2990,25 @@ if __name__ == "__main__":
 
     if args.process_query_result:
         if "teacher_forcing" in args.query_save_path:
+           
             if "query_examples.csv" == os.path.basename(args.query_save_path):
-                process_query_result(
-                                    teacher_forcing=True,
-                                    args = args,
-                                    gen_col = args.gen_col,
-                                    recall_common_neighbor = True,
-                                    recall_inductive = False,
-                                    )
+                if "query_ggen.csv" == os.path.basename(args.query_result_path):
+                    process_query_result(
+                                        teacher_forcing=True,
+                                        args = args,
+                                        gen_col = args.gen_col,
+                                        recall_common_neighbor = True,
+                                        recall_inductive = False,
+                                        )
+
+                elif "query_ggen_wofilter.csv" == os.path.basename(args.query_result_path):
+                    process_query_result(
+                                        teacher_forcing=True,
+                                        args = args,
+                                        gen_col = args.gen_col,
+                                        use_filter=False,
+                                        recall_common_neighbor = False,
+                                        recall_inductive = False,)
             else:
                 process_query_result_group(args = args,
                                     teacher_forcing=True,

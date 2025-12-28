@@ -348,7 +348,7 @@ class NegativeEdgeSampler(object):
         # return the unique select source and destination nodes in the selected time interval
         return set((src_node_id, dst_node_id) for src_node_id, dst_node_id in zip(self.src_node_ids[selected_time_interval], self.dst_node_ids[selected_time_interval]))
 
-    def sample(self, size: int, batch_src_node_ids: np.ndarray = None, batch_dst_node_ids: np.ndarray = None,
+    def sample(self, size: int= None, batch_src_node_ids: np.ndarray = None, batch_dst_node_ids: np.ndarray = None,
                current_batch_start_time: float = 0.0, current_batch_end_time: float = 0.0):
         """
         sample negative edges, support random, historical and inductive sampling strategy

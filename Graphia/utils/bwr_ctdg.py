@@ -139,7 +139,51 @@ Witty, creative, or engaging comments get bonus entries!""",
         },
         "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
     },
-   
+   "weibo_daily_long": {
+        "description": "This network represent social interaction graph among Weibo users focused on technology and digital products.",
+        "goal": "Post as source user to elicit a detailed text response from the destination user; label interaction type (comment or repost), and assign a timestamp no earlier than the node's prior collaboration year.",
+        "edge_text_template": """
+<ts_str>{ts_str}</ts_str>
+<label>{label}</label>
+<src_text>{src_text}</src_text>
+<dst_text>{dst_text}</dst_text>""",
+        "edge_text_cols": ["ts_str", "label", "src_text", "dst_text"],
+        "edge_text_hint": {
+            "label": "Main category of the product",
+            "ts_str": "Interaction time",
+            "src_text": "Src user text",
+            "dst_text": "Dst user text"
+        },
+        "broadcast_message":"""
+### Global Broadcast Message:
+Breaking Update: Comment Challenge!
+Attention Weibo users! 🚨
+
+We've just unlocked a special comment-to-win event! For the next 24 hours, every comment you make could be your ticket to instant prizes! 🌟
+Here's how it works:
+
+[Comment] on any post using #CommentChallenge
+Each comment gives you an entry
+Witty, creative, or engaging comments get bonus entries!""",
+        "node_text_template": """
+<user_name>{user_name}</user_name>
+<user_source>{user_source}</user_source>
+<user_gender>{user_gender}</user_gender>
+<user_location>{user_location}</user_location>
+<user_followers>{user_followers}</user_followers>
+<user_friends>{user_friends}</user_friends>
+<user_description>{user_description}</user_description>""",
+        "node_text_hint": {
+            "user_name": "User name",
+            "user_source": "User source",
+            "user_gender": "User gender", 
+            "user_location": "User location",
+            "user_followers": "User followers",
+            "user_friends": "User followees",
+            "user_description": "User description",
+        },
+        "node_text_cols": ["user_name", "user_source", "user_gender", "user_location", "user_followers", "user_friends", "user_description"],
+    },
 }
 
 
@@ -377,6 +421,7 @@ class BWRCTDGALLDataset(InMemoryDataset):
         sum_len = len(unique_times)
         pred_len = int(sum_len * self.pred_ratio)
         input_len = sum_len - 3*pred_len
+        assert input_len > 0, f"invalid pred ratio {self.pred_ratio}, must be smaller than {1/3}"
         assert input_len + 3*pred_len == sum_len, f"invalid pred ratio {self.pred_ratio}"
         train_cut_id =  input_len + pred_len
         val_start_id = pred_len
@@ -563,6 +608,7 @@ class BWRCTDGDataset:
         graph_times = []
        
         ctdg_src_node_list = []
+        # 1742601600
         ctdg_src_unique_dst_list = []
         
                 
@@ -1096,7 +1142,7 @@ if __name__ == "__main__":
         root=args.root,
         use_feature=args.use_feature,
         cm_order=args.cm_order,
-        # force_reload=args.force_reload
+        # force_reload=args.force_reloadœ
     )
     
 

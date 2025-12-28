@@ -153,13 +153,12 @@ case "$mode" in
             --graph_report_path "$graph_report_path" 
         ;;
     "help"|"")
-        echo "Usage: mode={process_tf|eval_tf|process_inf|eval_inf}"
-        echo "Current mode: '$mode'"
+        echo "Usage: mode={process_tf|eval_tf|pre_process_inf|pre_process_inf_broadcast|process_inf_broadcast|process_inf|eval_inf}"
         exit 1
         ;;
     *)
         echo "Unknown mode: $mode"
-        echo "Available: process_tf, eval_tf, process_inf, eval_inf"
+        echo "Available: process_tf, eval_tf, pre_process_inf, pre_process_inf_broadcast, process_inf_broadcast, process_inf, eval_inf"
         exit 1
         ;;
 esac

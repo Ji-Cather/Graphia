@@ -22,7 +22,7 @@ from roll.utils.prompt import *
 from roll.datasets.chat_template import get_chat_template
 import os
 
-from Graphia.utils.bwr_ctdg import (
+from LLMGGen.utils.bwr_ctdg import (
                                     Dataset_Template)
 
 def select_to_last_period(s, upper_token = 4e3):

@@ -9,41 +9,45 @@ dx_seq_model_name=seq_deg
 
 
 # # weibo_daily
-# export data_name=weibo_daily
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-# dx_seq_model_name=seq_deg
+export data_name=weibo_daily
+dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+dx_seq_model_name=seq_deg
 
 
 # weibo_tech
-# export data_name=weibo_tech
-# dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
-# dx_seq_model_name=seq_deg
+export data_name=weibo_tech
+dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+dx_seq_model_name=seq_deg
+
+
+# weibo_daily_long
+export data_name=weibo_daily_long
+dx_model_name=InformerDecoder_seed0_bwr2048_qmTrue_ufbert_cmTrue_rescaleTrue
+dx_seq_model_name=seq_deg
 
 
 
-export dx_src_root=/data/jiarui_ji/Graphia/Graphia/saved_results_deg/${dx_model_name}/${data_name}
-export dx_seq_model_root=/data/jiarui_ji/Graphia/Graphia/saved_results_deg/${dx_seq_model_name}/${data_name}
+export dx_src_root=Graphia/saved_results_deg/${dx_model_name}/${data_name}
+export dx_seq_model_root=Graphia/saved_results_deg/${dx_seq_model_name}/${data_name}
 
 
 
 save_root="Graphia"
 
-## tdgg
-# python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --rl --sft --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt 
-# python -m Graphia.src_edge_offline  --data_name $data_name --split val  --data_root ${data_root}  --rl --save_root ${save_root}
-# python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
+## graphia: tdgg train,val,test
+python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --rl --sft --save_root ${save_root}
+python -m Graphia.src_edge_offline  --data_name $data_name --split val  --data_root ${data_root}  --rl --save_root ${save_root}
+python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
 
 
-## idgg
+## graphia: idgg train,val,test
 # echo "python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt"
-# python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt
-# python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
+python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --save_root ${save_root} --idgg_rl --dx_src_path $dx_src_root/test_degree.pt
+python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_src_root/test_degree.pt --infer_dst --save_root ${save_root}
 
-# seq trainset
+# graphia seq: train
+python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --edge_seq --dst_seq
 
-# python -m Graphia.src_edge_offline  --data_name $data_name --split train --data_root ${data_root} --edge_seq --dst_seq
-
-# seq idgg pred 
-# python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_seq_model_root/test_degree.pt --infer_dst --save_root ${save_root}
-# python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_seq_model_root/test_degree.pt --infer_dst --save_root ${save_root}
+# graphia seq: idgg pred 
+python -m Graphia.src_edge_offline --data_name $data_name --split test  --data_root ${data_root} --dx_src_path $dx_seq_model_root/test_degree.pt --infer_dst --save_root ${save_root}
 

@@ -1,0 +1,51 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "shuffle_edge",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "Graphia.shuffle_edge",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Debug concat",
+             "type": "debugpy",
+            "request": "launch",
+            "module": "Graphia.final_process_merged_matrices",
+            "console": "integratedTerminal"
+        }
+        {
+            "name": "Debug Edge Classification",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "Graphia.evaluate_edge_classification",
+            "console": "integratedTerminal",
+            "args": [
+                "--data_name", "8days_dytag_small_text_en",
+                "--pred_ratio", "0.15",
+                "--time_window", "86400",
+                "--bwr", "1980",
+                "--use_feature", "bert",
+                "--cm_order",
+                "--num_runs", "1",
+                "--gpu", "0",
+                "--patience", "5",
+                "--model_name", "TGN",
+                "--num_layers", "2",
+                "--num_neighbors", "20",
+                "--dropout", "0.1",
+                "--sample_neighbor_strategy", "recent",
+                "--load_best_configs",
+                "--data_root", "Graphia/data",
+                "--save_root", "Graphia/ec_models/ "
+            ]
+        },
+
+        
+    ]
+}

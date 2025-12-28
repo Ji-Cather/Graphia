@@ -231,7 +231,7 @@ def plot_formatted_overall_radar(scores_file_path="Graphia/reports/idgg_social_f
         'DGGen': 'DGGen',
         'DYMOND': 'DYMOND',
         'tigger': 'Tigger',
-        'idgg_csv_processed': 'GAG-general'
+        'idgg_csv_processed': 'GAG-General'
     }
     
     df['model'] = df['model'].replace(model_rename_map)
@@ -249,11 +249,10 @@ def plot_formatted_overall_radar(scores_file_path="Graphia/reports/idgg_social_f
     
     # 定义模型绘制顺序
     model_order = [
-        'DGGen',
-        'DYMOND',
+       'DGGen',
         'Tigger',
-        'GAG-general',
         'Qwen3-8b-sft',
+        'GAG-General',
         'Graphia-seq',
         'Graphia'
     ]
@@ -283,9 +282,9 @@ def plot_formatted_overall_radar(scores_file_path="Graphia/reports/idgg_social_f
     # 定义基于您提供配色方案的颜色映射
     color_map = {
         'DGGen': '#1f77b4', 
-        'DYMOND': '#2ca02c',  
         'Tigger': '#9467bd', 
-        'GAG-general': '#f7b84d',
+        # 'GAG-general(Llama3-8B)': '#2ca02c',  
+        'GAG-General': '#f7b84d',
         'Qwen3-8b-sft': '#ff7f0e',  #
         'Graphia-seq': '#d62728',
         'Graphia': '#17becf'
@@ -381,7 +380,7 @@ def plot_formatted_dataset_radar_combined(scores_file_path="Graphia/reports/idgg
         'DGGen': 'DGGen',
         'DYMOND': 'DYMOND',
         'tigger': 'Tigger',
-        'idgg_csv_processed': 'GAG-general'
+        'idgg_csv_processed': 'GAG-General'
     }
     
     df['model'] = df['model'].replace(model_rename_map)
@@ -397,20 +396,18 @@ def plot_formatted_dataset_radar_combined(scores_file_path="Graphia/reports/idgg
     # 定义模型绘制顺序
     model_order = [
        'DGGen',
-        'DYMOND',
         'Tigger',
-        'GAG-general',
         'Qwen3-8b-sft',
+        'GAG-General',
         'Graphia-seq',
         'Graphia'
     ]
     
     # 定义颜色映射
     color_map = {
-        'DGGen': '#1f77b4', 
-        'DYMOND': '#2ca02c',  
+        'DGGen': '#1f77b4',   
         'Tigger': '#9467bd', 
-        'GAG-general': '#f7b84d',
+        'GAG-General': '#2ca02c',  
         'Qwen3-8b-sft': '#ff7f0e',  #
         'Graphia-seq': '#d62728',
         'Graphia': '#17becf'

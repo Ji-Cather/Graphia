@@ -27,8 +27,8 @@ from .utils_edge import *
 logger = get_logger()  # 获取日志记录器实例
 
 
-from Graphia.load_gnn_judger import create_edge_classification_model
-from Graphia.utils.utils import get_neighbor_sampler
+from LLMGGen.load_gnn_judger import create_edge_classification_model
+from LLMGGen.utils.utils import get_neighbor_sampler
 
 
 class EdgeGNNRewardWorker(Worker):

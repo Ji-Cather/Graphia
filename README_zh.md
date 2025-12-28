@@ -56,7 +56,7 @@ ROLL/roll/pipeline/rlvr
 
 - Python 3.7+
 - PyTorch 1.10+
-- 相关依赖库（根据实际需求补充）
+- requirements.txt
 
 ## 快速开始
 
@@ -136,3 +136,4 @@ IDGG评估：Graphia/eval_utils/eval_idgg.py
 感谢以下开源项目和研究团队的支持：
 - [ROLL](https://github.com/alibaba/ROLL.git) - 强化学习训练框架
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - 文本动态图Benchmark
+

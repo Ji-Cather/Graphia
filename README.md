@@ -61,7 +61,7 @@ ROLL/roll/pipeline/rlvr
 
 - Python 3.7+
 - PyTorch 1.10+
-- Related dependency libraries (to be supplemented based on actual needs)
+- requirements.txt
 
 ## Quick Start
 
@@ -143,5 +143,3 @@ Thanks to the following open-source projects and research teams for their suppor
 - [tigger](https://github.com/data-iitd/tigger) - Dynamic graph generation model
 - [DGGen](https://github.com/ryienh/DGGen) - Dynamic graph generation model
 
-## Contact Information
-If you have any questions or suggestions, please contact us at jijiarui@ruc.edu.cn

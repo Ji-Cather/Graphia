@@ -10,7 +10,8 @@ import os
 import json
 
 from .models.EdgeBank import edge_bank_link_prediction
-from .utils.metrics import get_link_prediction_metrics, get_edge_classification_metrics, get_retrival_metrics
+# from .utils.metrics import get_link_prediction_metrics, get_edge_classification_metrics, get_retrival_metrics, 
+from .utils.metrics import get_link_prediction_metrics, get_edge_classification_metrics,  get_retrival_metrics, calc_label_acc_precision_recall_f1_batch
 from .utils.utils import set_random_seed
 from .utils.utils import NegativeEdgeSampler, NeighborSampler
 # from .utils.metrics import mmd_degree_metrics
@@ -415,13 +416,13 @@ def evaluate_model_retrival(model_name: str, model: nn.Module, neighbor_sampler:
                 evaluate_data.node_interact_times[evaluate_data_indices], evaluate_data.edge_ids[evaluate_data_indices]
 
             if evaluate_neg_edge_sampler.negative_sample_strategy != 'random':
-                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=100,
+                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=None,
                                                                                 batch_src_node_ids=batch_src_node_ids,
                                                                                 batch_dst_node_ids=batch_dst_node_ids,
                                                                                 current_batch_start_time=batch_node_interact_times[0],
                                                                                 current_batch_end_time=batch_node_interact_times[-1])
             else:
-                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=100)
+                _, all_batch_neg_dst_node_ids = evaluate_neg_edge_sampler.sample(size=None)
             batch_neg_src_node_ids = batch_src_node_ids
 
             # we need to compute for positive and negative edges respectively, because the new sampling strategy (for evaluation) allows the negative source nodes to be
@@ -559,12 +560,14 @@ def evaluate_model_edge_classification(model_name: str, model: nn.Module, neighb
     with torch.no_grad():
         # store evaluate losses, trues and predicts
         evaluate_total_loss, evaluate_y_trues, evaluate_y_predicts = 0.0, [], []
+        y_ids = []
         evaluate_idx_data_loader_tqdm = tqdm(evaluate_idx_data_loader, ncols=120)
         for batch_idx, evaluate_data_indices in enumerate(evaluate_idx_data_loader_tqdm):
             evaluate_data_indices = evaluate_data_indices.numpy()
             batch_src_node_ids, batch_dst_node_ids, batch_node_interact_times, batch_edge_ids, batch_labels = \
                 evaluate_data.src_node_ids[evaluate_data_indices],  evaluate_data.dst_node_ids[evaluate_data_indices], \
                 evaluate_data.node_interact_times[evaluate_data_indices], evaluate_data.edge_ids[evaluate_data_indices], evaluate_data.labels[evaluate_data_indices]
+            batch_edge_ids_split = evaluate_data.edge_ids_split[evaluate_data_indices]
 
             if model_name in ['TGAT', 'CAWN', 'TCL']:
                 # get temporal embedding of source and destination nodes
@@ -613,16 +616,19 @@ def evaluate_model_edge_classification(model_name: str, model: nn.Module, neighb
 
             evaluate_y_trues.append(labels)
             evaluate_y_predicts.append(pred_labels)
+            y_ids.append(batch_edge_ids_split)
 
             evaluate_idx_data_loader_tqdm.set_description(f'evaluate for the {batch_idx + 1}-th batch, evaluate loss: {loss.item()}')
 
         evaluate_total_loss /= (batch_idx + 1)
         evaluate_y_trues = torch.cat(evaluate_y_trues, dim=0)
         evaluate_y_predicts = torch.cat(evaluate_y_predicts, dim=0)
+        y_ids = np.concatenate(y_ids,axis=0)
 
         evaluate_metrics = get_edge_classification_metrics(predicts=evaluate_y_predicts, labels=evaluate_y_trues)
+        # evaluate_metrics = calc_label_acc_precision_recall_f1_batch(predicts=evaluate_y_predicts, labels=evaluate_y_trues)
 
-    return evaluate_total_loss, evaluate_metrics
+    return evaluate_total_loss, evaluate_metrics, evaluate_y_predicts, y_ids
 
 
 def evaluate_edge_bank_link_prediction(args: argparse.Namespace, train_data: Data, val_data: Data, test_idx_data_loader: DataLoader,

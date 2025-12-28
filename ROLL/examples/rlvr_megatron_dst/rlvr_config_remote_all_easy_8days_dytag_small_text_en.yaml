@@ -89,7 +89,7 @@ validation:
   data_args:
     template: qwen2_5
     file_name:
-      - prompts/${dataset_name}/val/teacher_forcing/edge_text_examples_cut.jsonl
+      - prompts/${dataset_name}/val/teacher_forcing/edge_text_easy_examples.jsonl 
     prompt: prompt
   generating_args:
     # top_p: 0.6

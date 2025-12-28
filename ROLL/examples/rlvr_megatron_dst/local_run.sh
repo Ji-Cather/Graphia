@@ -1,1 +1,1 @@
-nohup python examples/start_rlvr_pipeline.py --config_path rlvr_megatron_dst --config_name rlvr_config_remote_all_dst_weibo_daily.yaml
+nohup python examples/start_rlvr_pipeline.py --config_path rlvr_megatron_dst --config_name rlvr_config_remote_all_dst_weibo_tech.yaml

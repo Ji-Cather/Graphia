@@ -187,12 +187,13 @@ rewards:
     bert_args:
       model_name_or_path: prajjwal1/bert-tiny
 
-    gnn_args:
-      sample_neighbor_strategy: recent
-      time_scaling_factor: 1e-6
-      seed: 42
-      model_name: GraphMixer
-      save_model_path: Graphia/lp_models/saved_models/GraphMixer/${dataset_name}/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl
+    ## not effective in our experiments
+    # gnn_args:
+    #   sample_neighbor_strategy: recent
+    #   time_scaling_factor: 1e-6
+    #   seed: 42
+    #   model_name: GraphMixer
+    #   save_model_path: Graphia/lp_models/saved_models/GraphMixer/${dataset_name}/GraphMixer_seed0bert/GraphMixer_seed0bert.pkl
 
     environment_data_args:
       pred_ratio: 0.15
@@ -203,9 +204,8 @@ rewards:
       cm_order: True
       force_reload: False
 
-    reward_type: overlap_reward
+    reward_type: 5_overlap_reward
     reward_args:
-      alpha: 0.5 # optional, for weight reward
       recall_alpha: 10
       recall_topk: 1000
 
