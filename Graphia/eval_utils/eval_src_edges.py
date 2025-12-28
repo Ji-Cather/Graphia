@@ -325,10 +325,10 @@ def evaluate_graphs(gt_edge_matrix,
    
     abs_result = evaluate_graph_metric(gt_edge_matrix, pred_edge_matrix)
     
-    pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
-                               k=int(0.2 * gt_edge_matrix.shape[0]))
+    # pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
+    #                            k=int(0.2 * gt_edge_matrix.shape[0]))
 
-    graph_metrics.update({f"{k}_hub": v for k, v in pred_result.items()})
+    # graph_metrics.update({f"{k}_hub": v for k, v in pred_result.items()})
 
     pred_result = evaluate_hubs(gt_edge_matrix, pred_edge_matrix, 
                                k=100)
@@ -510,24 +510,7 @@ def evaluate_edge_text(df):
 
 
     
-def extract_score_v3(llm_output: str):
-        # 修正正则表达式：允许方括号完全缺失
-        pattern = r"(GF|CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
-        
-        matches = re.findall(pattern, llm_output, re.IGNORECASE)
-        
-        # 初始化默认值（全部设为1）
-        scores = {'GF': 0, 'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
-        
-        # 更新匹配到的键值
-        for key, value in matches:
-            scores[key.upper()] = int(value)  # 转换为大写并存储为整数
-        
-        # 计算平均分
-        total = sum(scores.values())
-        average = total / (5*len(scores)) # 0-1
-        scores.update({"average": average})
-        return scores
+
 
 
 
@@ -611,15 +594,19 @@ def evaluate_edge_text(df):
 def extract_score_v3(llm_output: str):
         # 修正正则表达式：允许方括号完全缺失
         pattern = r"(GF|CF|PD|DA|IQ|CR):\s*\[?\s*(\d+)\s*\]?.*?"
-        
-        matches = re.findall(pattern, llm_output, re.IGNORECASE)
-        
-        # 初始化默认值（全部设为1）
+
+        # 初始化默认值（全部设为0）
         scores = {'GF': 0, 'CF': 0, 'PD': 0, 'DA': 0, 'IQ': 0, 'CR': 0}
-        
-        # 更新匹配到的键值
-        for key, value in matches:
-            scores[key.upper()] = int(value)  # 转换为大写并存储为整数
+
+        try:
+            matches = re.findall(pattern, llm_output, re.IGNORECASE)
+            # 更新匹配到的键值
+            for key, value in matches:
+                scores[key.upper()] = int(value)  # 转换为大写并存储为整数
+       
+        except:
+            pass
+       
         
         # 计算平均分
         total = sum(scores.values())
@@ -658,24 +645,79 @@ def evaluate_edges(
         if not isinstance(gt_label, (list, tuple)):
             gt_label = [gt_label]
         return int(row["edge_label"] in gt_label)
+    # 计算label_acc、precision、recall和f1
+    def calc_label_acc_precision_recall_f1(row):
+        try:
+            gt_label = eval(row["gt_label"]) if isinstance(row["gt_label"], str) else row["gt_label"]
+        except:
+            gt_label = row["gt_label"]
+        if not isinstance(gt_label, (list, tuple)):
+            gt_label = [gt_label]
+        
+        try:
+            pred_label = eval(row["edge_label"]) if isinstance(row["edge_label"], str) else row["edge_label"]
+        except:
+            pred_label = row["edge_label"]
+        if not isinstance(pred_label, (list, tuple)):
+            pred_label = [pred_label]
+        
+        # 计算accuracy
+        acc = int(row["edge_label"] in gt_label)
+        
+        # 计算precision, recall, f1
+        if len(pred_label) == 0:
+            precision = 0.0
+        else:
+            correct_predictions = len(set(pred_label) & set(gt_label))
+            precision = correct_predictions / len(pred_label)
+        
+        if len(gt_label) == 0:
+            recall = 0.0
+        else:
+            correct_predictions = len(set(pred_label) & set(gt_label))
+            recall = correct_predictions / len(gt_label)
+        
+        if precision + recall == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * (precision * recall) / (precision + recall)
+        
+        return acc, precision, recall, f1
     
     if gen_graph_df is not None:
         if "edge_label" in gen_graph_df.columns and "gt_label" in gen_graph_df.columns:
             gen_graph_df = evaluate_edge_text(gen_graph_df)
-            gen_graph_df["label_acc"] = gen_graph_df.apply(calc_label_acc, axis=1)
+            # gen_graph_df["label_acc"] = gen_graph_df.apply(calc_label_acc, axis=1)
+            
+            metrics = gen_graph_df.apply(calc_label_acc_precision_recall_f1, axis=1)
+            gen_graph_df["label_acc"] = [x[0] for x in metrics]
+            gen_graph_df["label_precision"] = [x[1] for x in metrics]
+            gen_graph_df["label_recall"] = [x[2] for x in metrics]
+            gen_graph_df["label_f1"] = [x[3] for x in metrics]
+            
+            # # debug
+            # print(f"标签准确率(label_acc): {gen_graph_df['label_acc'].mean():.4f}")
+            # edge_matrix_struct = {}
+            # for col in ["label_acc", "ROUGE_L", "BERTScore_F1"]:
+            #     if col in gen_graph_df.columns:
+            #         edge_matrix_struct[col] = np.mean(gen_graph_df[col])
             # debug
             print(f"标签准确率(label_acc): {gen_graph_df['label_acc'].mean():.4f}")
+            print(f"标签精确率(label_precision): {gen_graph_df['label_precision'].mean():.4f}")
+            print(f"标签召回率(label_recall): {gen_graph_df['label_recall'].mean():.4f}")
+            print(f"标签F1分数(label_f1): {gen_graph_df['label_f1'].mean():.4f}")
+            
             edge_matrix_struct = {}
-            for col in ["label_acc", "ROUGE_L", "BERTScore_F1"]:
+            for col in ["label_acc", "label_precision", "label_recall", "label_f1", "ROUGE_L", "BERTScore_F1"]:
                 if col in gen_graph_df.columns:
                     edge_matrix_struct[col] = np.mean(gen_graph_df[col])
-            
+                    
         edge_matrix.update(edge_matrix_struct)
     print(f"edge_matrix: {edge_matrix}")
 
     return edge_matrix
 
-def get_ctdg_edges(data:TemporalData, # 输入的边文件
+def get_ctdg_edges(data: TemporalData, # 输入的边文件
                     max_node_number
                     ):
     """
@@ -693,12 +735,26 @@ def get_ctdg_edges(data:TemporalData, # 输入的边文件
     src = data.src.long() if hasattr(data.src, 'long') else data.src.astype(int)
     dst = data.dst.long() if hasattr(data.dst, 'long') else data.dst.astype(int)
     
+    # 过滤掉超出范围的索引
+    valid_mask = (src >= 0) & (src <= max_node_number) & (dst >= 0) & (dst <= max_node_number)
+    src = src[valid_mask]
+    dst = dst[valid_mask]
+    
+    if len(src) == 0:  # 如果没有有效的边
+        return edge_matrix
+    
     src_dst_pairs = np.stack([src, dst], axis=1)
     unique_pairs, counts = np.unique(src_dst_pairs, axis=0, return_counts=True)
+    
+    # 再次确保索引不超出范围
+    valid_pairs_mask = (unique_pairs[:, 0] >= 0) & (unique_pairs[:, 0] <= max_node_number) & \
+                       (unique_pairs[:, 1] >= 0) & (unique_pairs[:, 1] <= max_node_number)
+    unique_pairs = unique_pairs[valid_pairs_mask]
+    counts = counts[valid_pairs_mask]
+    
     edge_matrix[unique_pairs[:, 0], unique_pairs[:, 1]] = counts
     
     return edge_matrix
-
 
 
 def temporal_data_to_nx_graph(temporal_data: TemporalData, 

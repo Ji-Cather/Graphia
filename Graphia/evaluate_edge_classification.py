@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # get data for training, validation and testing
     node_raw_features, edge_raw_features, full_data, train_data, val_data, test_data, new_node_val_data, new_node_test_data, cat_number = \
-        get_edge_classification_data(data_name=args.data_name, val_ratio=args.val_ratio, test_ratio=args.test_ratio, args=args)
+        get_edge_classification_data(args=args)
 
     # initialize validation and test neighbor sampler to retrieve temporal graph
     full_neighbor_sampler = get_neighbor_sampler(data=full_data, sample_neighbor_strategy=args.sample_neighbor_strategy,
@@ -55,9 +55,9 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
-        os.makedirs(f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/", exist_ok=True)
+        os.makedirs(os.path.join(args.save_root, f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/"), exist_ok=True)
         # create file handler that logs debug and higher level messages
-        fh = logging.FileHandler(f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/{str(time.time())}.log")
+        fh = logging.FileHandler(os.path.join(args.save_root,f"./logs/{args.model_name}/{args.data_name}/{args.save_result_name}/{str(time.time())}.log"))
         fh.setLevel(logging.DEBUG)
         # create console handler with a higher log level
         ch = logging.StreamHandler()
@@ -117,7 +117,7 @@ if __name__ == "__main__":
                     f'{get_parameter_sizes(model) * 4 / 1024} KB, {get_parameter_sizes(model) * 4 / 1024 / 1024} MB.')
 
         # load the saved model
-        load_model_folder = f"./saved_models/{args.model_name}/{args.data_name}/{args.load_model_name}"
+        load_model_folder = os.path.join(args.save_root, f"saved_models/{args.model_name}/{args.data_name}/{args.load_model_name}")
         early_stopping = EarlyStopping(patience=0, save_model_folder=load_model_folder,
                                        save_model_name=args.load_model_name, logger=logger, model_name=args.model_name)
         early_stopping.load_checkpoint(model, map_location='cpu')
@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
         # the saved best model of memory-based models cannot perform validation since the stored memory has been updated by validation data
         if args.model_name not in ['JODIE', 'DyRep', 'TGN']:
-            val_total_loss, val_metrics = evaluate_model_edge_classification(model_name=args.model_name,
+            val_total_loss, val_metrics, val_y_preds, val_y_ids = evaluate_model_edge_classification(model_name=args.model_name,
                                                                              model=model,
                                                                              neighbor_sampler=full_neighbor_sampler,
                                                                              evaluate_idx_data_loader=val_idx_data_loader,
@@ -147,7 +147,7 @@ if __name__ == "__main__":
                                                                              num_neighbors=args.num_neighbors,
                                                                              time_gap=args.time_gap)
 
-        test_total_loss, test_metrics = evaluate_model_edge_classification(model_name=args.model_name,
+        test_total_loss, test_metrics, test_y_preds, test_y_ids = evaluate_model_edge_classification(model_name=args.model_name,
                                                                            model=model,
                                                                            neighbor_sampler=full_neighbor_sampler,
                                                                            evaluate_idx_data_loader=test_idx_data_loader,
@@ -155,6 +155,8 @@ if __name__ == "__main__":
                                                                            loss_func=loss_func,
                                                                            num_neighbors=args.num_neighbors,
                                                                            time_gap=args.time_gap)
+        test_y_preds_list = test_y_preds.cpu().numpy().tolist() if hasattr(test_y_preds, 'cpu') else test_y_preds.tolist() if hasattr(test_y_preds, 'tolist') else list(test_y_preds)
+
 
         # store the evaluation metrics at the current run
         val_metric_dict, test_metric_dict = {}, {}
@@ -188,15 +190,19 @@ if __name__ == "__main__":
         if args.model_name not in ['JODIE', 'DyRep', 'TGN']:
             result_json = {
                 "validate metrics": {metric_name: f'{val_metric_dict[metric_name]:.4f}' for metric_name in val_metric_dict},
-                "test metrics": {metric_name: f'{test_metric_dict[metric_name]:.4f}' for metric_name in test_metric_dict}
+                "test metrics": {metric_name: f'{test_metric_dict[metric_name]:.4f}' for metric_name in test_metric_dict},
+                "test predictions": test_y_preds_list,
+                "test_edge_ids": test_y_ids.tolist()
             }
         else:
             result_json = {
-                "test metrics": {metric_name: f'{test_metric_dict[metric_name]:.4f}' for metric_name in test_metric_dict}
+                "test metrics": {metric_name: f'{test_metric_dict[metric_name]:.4f}' for metric_name in test_metric_dict},
+                "test predictions": test_y_preds_list,
+                "test_edge_ids": test_y_ids.tolist()
             }
         result_json = json.dumps(result_json, indent=4)
 
-        save_result_folder = f"./saved_results/{args.model_name}/{args.data_name}"
+        save_result_folder = os.path.join(args.save_root, f"saved_results/{args.model_name}/{args.data_name}")
         os.makedirs(save_result_folder, exist_ok=True)
         save_result_path = os.path.join(save_result_folder, f"{args.save_result_name}.json")
         with open(save_result_path, 'w') as file:

@@ -5,6 +5,10 @@ python -m Graphia.utils.bwr_ctdg --pred_ratio 0.15 --root Graphia/data/weibo_tec
 python -m Graphia.utils.bwr_ctdg --pred_ratio 0.15 --root Graphia/data/weibo_daily --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
 
 
+## for abalation in cold start scenrio.
+python -m Graphia.utils.bwr_ctdg --pred_ratio 0.3 --root Graphia/data/weibo_daily_long --time_window 86400 --bwr 2048 --use_feature bert --cm_order True --force_reload
+
+
 
 # Root: data/8days_dytag_small_text
 # Input length: 18

@@ -15,7 +15,8 @@ def get_snapshot_graph(path,
                        cut_time: int = None,
                        cut_edge_number:int = None,
                        edge_msg: bool = False,
-                       time_window:int = 86400):
+                       time_window:int = 86400,
+                       max_node_number:int = None):
                        
     if (cut_time is None and cut_edge_number is None) or (cut_time is not None and cut_edge_number is not None):
         raise ValueError("pred_len和cut_edge_number必须且只能设置其中一个")
@@ -52,6 +53,9 @@ def get_snapshot_graph(path,
         max_time = cut_time if df['t'].max() > cut_time else df['t'].max()
         
         df_sub = df[(df['t'] >= min_time) & (df['t'] <= max_time)]
+    
+    if max_node_number is not None:
+        df_sub = df_sub[(df_sub['src'] <= max_node_number) & (df_sub['dst'] <= max_node_number)]
         
     data = TemporalData(src=torch.tensor(df_sub['src'].values, dtype=torch.long), 
                         dst=torch.tensor(df_sub['dst'].values, dtype=torch.long), 
@@ -92,26 +96,53 @@ def get_baseline_graphs(args):
     
     data_baseline_map = {
 
-         "8days_dytag_small_text_en":[
-            "Graphia/baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv",
-            "Graphia/baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv",
-            "Graphia/baselines/DYMOND/8days_dytag_small_text_en/learned_parameters/generated_graph/results/generated_edges.csv"
+        "8days_dytag_small_text_en":[
+            
+            "Graphia_baselines/DGGen_alter/results/synthetic_data/CAWN_8days_dytag_small_text_en.csv",
+            "Graphia_baselines/DGGen_alter/results/synthetic_data/DyGFormer_8days_dytag_small_text_en.csv",
+            "Graphia_baselines/DGGen_alter/results/synthetic_data/GraphMixer_8days_dytag_small_text_en.csv",
+            "Graphia_baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv",
+            "Graphia_baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv",
+            # "Graphia_baselines/DYMOND/8days_dytag_small_text_en/learned_parameters/generated_graph/results/generated_edges.csv"
         ],
         "weibo_daily":[
-            "Graphia/baselines/idgg_csv_processed/llama3-8b/weibo_daily/edge_weibo_daily.csv",
-            "Graphia/baselines/DGGen/results/synthetic_data/weibo_daily.csv",
-            "Graphia/baselines/tigger/models/weibo_daily/results/generated_edges.csv",
+            "Graphia_baselines/idgg_csv_processed/qwen3-8b/weibo_tech/edge_weibo_tech.csv",
+            # "Graphia_baselines/DGGen/results/synthetic_data/weibo_daily.csv",
+            # "Graphia_baselines/tigger/models/weibo_daily/results/generated_edges.csv",
+            #  "Graphia_baselines/idgg_csv_processed/llama3-8b/weibo_daily/edge_weibo_daily.csv",
             
         ],
        
         "weibo_tech":[
-            "Graphia/baselines/idgg_csv_processed/llama3-8b/weibo_tech/edge_weibo_tech.csv",
-            "Graphia/baselines/DGGen/results/synthetic_data/weibo_tech.csv",
-            "Graphia/baselines/tigger/models/weibo_tech/results/generated_edges.csv",
+            "Graphia_baselines/idgg_csv_processed/llama3-8b/weibo_tech/edge_weibo_tech.csv",
+            "Graphia_baselines/idgg_csv_processed/qwen3-8b/weibo_tech/edge_weibo_tech.csv",
+            "Graphia_baselines/DGGen_alter/results/synthetic_data/GraphMixer_weibo_tech.csv",
+            "Graphia_baselines/DGGen/results/synthetic_data/weibo_tech.csv",
+            "Graphia_baselines/tigger/models/weibo_tech/results/generated_edges.csv",
             
         ],
-        
     }
+
+    baseline_name_map = {
+        "Graphia_baselines/DGGen_alter/results/synthetic_data/CAWN_8days_dytag_small_text_en.csv": "DGGen(CAWN)",
+        "Graphia_baselines/DGGen_alter/results/synthetic_data/DyGFormer_8days_dytag_small_text_en.csv": "DGGen(DyGFormer)",
+        "Graphia_baselines/DGGen_alter/results/synthetic_data/GraphMixer_8days_dytag_small_text_en.csv": "DGGen(GraphMixer)",
+        "Graphia_baselines/DGGen/results/synthetic_data/8days_dytag_small_text_en.csv":  "DGGen",
+        "Graphia_baselines/tigger/models/8days_dytag_small_text_en/results/generated_edges.csv": "TIGGER",
+
+        
+        "Graphia_baselines/idgg_csv_processed/qwen3-8b/weibo_tech/edge_weibo_tech.csv": "GAG-General(Qwen3-8B)",
+        "Graphia_baselines/DGGen/results/synthetic_data/weibo_daily.csv": "DGGen",
+        "Graphia_baselines/tigger/models/weibo_daily/results/generated_edges.csv": "TIGGER",
+        "Graphia_baselines/idgg_csv_processed/llama3-8b/weibo_daily/edge_weibo_daily.csv": "GAG-General(LLaMA3-8B)",
+
+        "Graphia_baselines/idgg_csv_processed/llama3-8b/weibo_tech/edge_weibo_tech.csv": "GAG-General(LLaMA3-8B)",
+        "Graphia_baselines/idgg_csv_processed/qwen3-8b/weibo_tech/edge_weibo_tech.csv": "GAG-General(Qwen3-8B)",
+        "Graphia_baselines/DGGen/results/synthetic_data/weibo_tech.csv" : "DGGen",
+        "Graphia_baselines/tigger/models/weibo_tech/results/generated_edges.csv": "TIGGER",
+        "Graphia_baselines/DGGen_alter/results/synthetic_data/GraphMixer_weibo_tech.csv": "DGGen(GraphMixer)",
+    }
+
     input_edge_ids = torch.concat(list(torch.tensor(v) for v in data_ctdg.input_edges_dict.values()))
     indices = input_edge_ids.int()
     t = data_ctdg.ctdg.t[indices]
@@ -126,8 +157,10 @@ def get_baseline_graphs(args):
 
     if args.cut_off_baseline == "edge":
         for baseline_path in data_baseline_map[args.data_name]:
-            match = re.search(r'Graphia/baselines/([^/]+)/', baseline_path)
-            baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
+            # match = re.search(r'Graphia_baselines/([^/]+)/', baseline_path)
+            # baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
+            baseline_name = baseline_name_map[baseline_path]
+            print(args.data_name, test_data.src.shape[0])
             try:
                 baseline_data = get_snapshot_graph(baseline_path, 
                                                     initial_time = initial_time,
@@ -135,7 +168,8 @@ def get_baseline_graphs(args):
                                                 pred_len=pred_len, 
                                                 cut_edge_number=test_data.src.shape[0],
                                                 edge_msg = args.edge_msg,
-                                                time_window=data_ctdg.time_window)      
+                                                time_window=data_ctdg.time_window,
+                                                max_node_number=max_node_number)      
                 if not args.edge_msg and not args.node_msg:
                     baseline_graphs[baseline_name] = [baseline_data]
                 else:
@@ -156,7 +190,7 @@ def get_baseline_graphs(args):
 
     elif args.cut_off_baseline == "time":
         for baseline_path in data_baseline_map[args.data_name]:
-            match = re.search(r'Graphia/baselines/([^/]+)/', baseline_path)
+            match = re.search(r'Graphia_baselines/([^/]+)/', baseline_path)
             baseline_name = match.group(1)  # 返回第一个捕获组（即斜杠之间的内
             
             try:

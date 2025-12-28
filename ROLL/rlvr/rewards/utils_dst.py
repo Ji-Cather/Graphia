@@ -7,8 +7,8 @@ import numpy as np
 import torch.nn as nn
 from roll.distributed.scheduler.protocol import DataProto
 
-from Graphia.load_gnn_judger import compute_src_dsts_score
-from Graphia.utils.bwr_ctdg import (BWRCTDGALLDataset, 
+from LLMGGen.load_gnn_judger import compute_src_dsts_score
+from LLMGGen.utils.bwr_ctdg import (BWRCTDGALLDataset, 
                                     BWRCTDGDataset,
                                     Dataset_Template)
 from .utils_parser import *
@@ -355,10 +355,12 @@ class DstMapper:
             reward_dict["format_reward"] = 0
         parsed["ori_text"] = text_response
         return parsed, reward_dict
+
     
     
 
     def _collect_reward(self, 
+                        rewards: dict,
                         response: dict,
                         bert_embedder: BertEmbedder,
                         logger) -> dict:
@@ -400,7 +402,7 @@ class DstMapper:
             candidate_dst_ids = execution_res["dst_ids"]
             # llm_candidate_dst_ids = response["candidate_dst_ids"]
             # candidate_dst_ids = list(set(candidate_dst_ids) | set(llm_candidate_dst_ids))
-            rewards = calculate_reward_value(
+            rewards_cal = calculate_reward_value(
                             candidate_dst_ids,
                             gt_dst_idxs,
                             self.environment_data[tag],
@@ -415,26 +417,29 @@ class DstMapper:
             logger.error("_collect_reward")
             response["candidate_dst_ids"] = []
             response["candidate_dst_texts"] = ""
-            rewards = {
+            rewards_cal = {
                 "overlap_reward" : 0,
+                "hit_reward" : 0,
                 "weight_reward": 0,
                 "score": 0,
-                'gnn_reward':0,
-                "gnn_weight_reward":0,
-                "gnn_curriculum_reward":0
             }
+        rewards.update(rewards_cal)
         return rewards, response
 
     def _collect_gnn_reward(self, 
+                        rewards: dict,
                         response: dict,
                         bert_embedder: BertEmbedder,
+                        logger,
                         model_name: str,
                         gnn_model: nn.Module,
                         global_step: int,
-                        logger) -> dict:
-        rewards, response = self._collect_reward(response,
+                        ) -> dict:
+        rewards, response = self._collect_reward(rewards,
+                                                response,
                                                 bert_embedder,
-                                                logger)
+                                                logger,
+                                                )
         tag = response["tag"]
         assert tag in ["train", "val", "test"], "tag should be within [train, val, test]"
         num_can = len(response["candidate_dst_ids"])
@@ -459,7 +464,7 @@ class DstMapper:
                         model_type = "lp"
                 )
 
-                # rewards["gnn_reward"] = torch.sum(gnn_rewards).item() # sum or mean ?
+                rewards["gnn_reward"] = torch.sum(gnn_rewards).item() # sum or mean ?
                 rewards["gnn_reward"] = apply_positional_weighting(
                                                         gnn_rewards,
                                                         dx_src=dx_src,
@@ -599,6 +604,7 @@ def calculate_reward_value(
         "hit_reward" : int(len(overlap)>0),
         "weight_reward": int(r_value),
         "score": int(len(overlap)>0),
+        "5_overlap_reward": 5*int(len(overlap)),
     }
 
     return calculate_reward

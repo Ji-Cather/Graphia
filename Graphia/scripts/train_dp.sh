@@ -30,7 +30,7 @@ python -m Graphia.test_src_degree \
 
 
 python -m Graphia.train_node_regression_v2 \
-  --data_name weibo_daily \
+  --data_name weibo_daily_long \
   --data_root ${data_root} \
   --model_name InformerDecoder \
   --num_runs 1 \
@@ -86,35 +86,7 @@ python -m Graphia.test_src_degree \
 
 
 
-python -m Graphia.train_node_regression_v2 \
-  --data_name cora \
-  --data_root ${data_root} \
-  --model_name InformerDecoder \
-  --num_runs 1 \
-  --gpu 0 \
-  --num_epochs 50 \
-  --batch_size 1 \
-  --test_interval_epochs 5 \
-  --pred_ratio 0.15 \
-  --time_window 31536000 \
-  --bwr 2048 \
-  --use_feature bert \
-  --cm_order \
-  --quantile_mapping \
-  --rescale
-
-
-python -m Graphia.test_src_degree \
-  --data_root ${data_root} \
-  --data_name cora \
-  --pred_ratio 0.15 \
-  --time_window 31536000 \
-  --bwr 2048 \
-  --use_feature bert \
-  --cm_order \
-  --rescale
-
-
+## for sequential data
 python -m Graphia.train_node_regression_v3 \
   --data_name 8days_dytag_small_text_en \
   --data_root ${data_root} \

@@ -5,8 +5,7 @@ Graphia 是一个基于强化学习的社会网络图生成框架。
 
 ## 数据集
 
-我们公开了weibo-tech和weibo-daily数据集的处理版本。
-propagate-en数据将在论文录用后公开。
+我们公开了weibo-tech, weibo-daily, propagate-en(8days_dytag_small_text_en) 数据集的处理版本。
 
 数据集链接：https://www.modelscope.cn/datasets/cather111/Graphia_data
 
@@ -57,7 +56,7 @@ ROLL/roll/pipeline/rlvr
 
 - Python 3.7+
 - PyTorch 1.10+
-- 相关依赖库（根据实际需求补充）
+- requirements.txt
 
 ## 快速开始
 
@@ -137,3 +136,4 @@ IDGG评估：Graphia/eval_utils/eval_idgg.py
 感谢以下开源项目和研究团队的支持：
 - [ROLL](https://github.com/alibaba/ROLL.git) - 强化学习训练框架
 - [GDGB](https://github.com/Lucas-PJ/GDGB-ALGO) - 文本动态图Benchmark
+

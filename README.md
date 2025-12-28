@@ -5,7 +5,7 @@ Graphia is a reinforcement learning-based social network graph generation framew
 
 ## Dataset
 
-We have published the processed versions of weibo-tech and weibo-daily datasets. 
+We have published the processed versions of weibo-tech, weibo-daily, propagate-en(8days_dytag_small_text_en) datasets. 
 The propagate-en data will be made public after the paper is accepted.
 
 Dataset link: https://www.modelscope.cn/datasets/cather111/Graphia_data
@@ -61,7 +61,7 @@ ROLL/roll/pipeline/rlvr
 
 - Python 3.7+
 - PyTorch 1.10+
-- Related dependency libraries (to be supplemented based on actual needs)
+- requirements.txt
 
 ## Quick Start
 
@@ -143,5 +143,3 @@ Thanks to the following open-source projects and research teams for their suppor
 - [tigger](https://github.com/data-iitd/tigger) - Dynamic graph generation model
 - [DGGen](https://github.com/ryienh/DGGen) - Dynamic graph generation model
 
-## Contact Information
-If you have any questions or suggestions, please contact us at jijiarui@ruc.edu.cn

@@ -5,12 +5,10 @@ networkx
 nltk
 numpy
 pandas
-peft
-PyYAML
 PyYAML
 rouge
 scikit_learn
 torch
 tqdm
 transformers
-powerlaw 
+powerlaw

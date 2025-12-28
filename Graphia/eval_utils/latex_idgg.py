@@ -194,6 +194,9 @@ def df_to_latex_idgg(df,
                     # 格式化为4位小数，去掉末尾的0
                     val_str = f"{val:.4f}"
                     
+                    if "rank" in metric:
+                        val_str = f"{val:.2f}"
+
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
@@ -207,6 +210,8 @@ def df_to_latex_idgg(df,
                         top1_val = sorted_vals.iloc[0]
                         top2_val = sorted_vals.iloc[1] if len(sorted_vals) > 1 else top1_val
                         
+                        
+
                         # 如果是最佳值，加粗显示
                         if abs(val - top1_val) < 1e-6:
                             val_str = f"\\textbf{{{val_str}}}"
@@ -226,7 +231,8 @@ def df_to_latex_idgg(df,
                     val = float(row[metric])
                     # 格式化为4位小数，去掉末尾的0
                     val_str = f"{val:.4f}"
-                    
+                    if "rank" in metric:
+                        val_str = f"{val:.2f}"
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
@@ -258,8 +264,9 @@ def df_to_latex_idgg(df,
                 try:
                     val = float(row[metric])
                     # 格式化为4位小数，去掉末尾的0
-                    val_str = f"{val:.4f}".rstrip('0').rstrip('.')
-                    
+                    val_str = f"{val:.4f}"
+                    if "rank" in metric:
+                        val_str = f"{val:.2f}"
                     # 查找该指标在当前数据集中的最大值和次大值
                     col_vals = pd.to_numeric(dataset_df[metric], errors='coerce').dropna()
                     if len(col_vals) > 0:
@@ -272,12 +279,14 @@ def df_to_latex_idgg(df,
                         top1_val = sorted_vals.iloc[0]
                         top2_val = sorted_vals.iloc[1] if len(sorted_vals) > 1 else top1_val
                         
+                        
                         # 如果是最佳值，加粗显示
                         if abs(val - top1_val) < 1e-6:
                             val_str = f"\\textbf{{{val_str}}}"
                         # 如果是次佳值，加下划线显示
                         elif abs(val - top2_val) < 1e-6:
                             val_str = f"\\underline{{{val_str}}}"
+                            
                 except:
                     val_str = str(row[metric])
                 
