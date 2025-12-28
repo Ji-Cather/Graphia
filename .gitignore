@@ -32,3 +32,5 @@ saved_models_deg/
 Graphia/final_process_merged_matrices.py
 Graphia/evaluate_node_retrieval_2.py
 Graphia/compare_eval_llm_results.py
+Graphia/shuffle_edge.py  
+Graphia/process_merged_matrices.py
